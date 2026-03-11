@@ -1,0 +1,42 @@
+# CREDENCIALES Y CONFIGURACIÓN SENSIBLE
+.env
+
+# ENTORNO VIRTUAL DE PYTHON
+venv/
+.venv/
+env/
+ENV/
+
+# PYTHON — CACHÉ Y COMPILADOS
+__pycache__/
+*.py[cod]
+*.so
+
+# PRUEBAS Y COBERTURA
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ALEMBIC (no ignorar carpeta, sí el caché)
+alembic/versions/__pycache__/
+
+# BASE DE DATOS LOCAL
+*.db
+*.sqlite3
+
+# LOGS
+*.log
+logs/
+
+# VS CODE
+.vscode/
+
+# SISTEMA OPERATIVO
+.DS_Store
+Thumbs.db
+
+# ARCHIVOS TEMPORALES
+*.bak
+*.tmp
+*.swp
+
