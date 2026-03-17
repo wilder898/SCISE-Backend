@@ -1,9 +1,9 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, BigInteger, String, Text
 from app.db.base import Base
 
 class Rol(Base):
     __tablename__ = "roles"
 
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(50), unique=True, nullable=False)
-    descripcion = Column(String(255))
+    id          = Column(BigInteger, primary_key=True, index=True)
+    nombre      = Column(String(100), unique=True, nullable=False)
+    descripcion = Column(Text)
