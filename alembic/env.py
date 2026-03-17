@@ -4,6 +4,15 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings
 from app.db.base import Base
+
+# Import all models here so Alembic can discover them
+from app.models.roles          import Rol
+from app.models.usuarios       import Usuario
+from app.models.estudiantes    import Estudiante
+from app.models.equipos        import Equipo
+from app.models.movimientos    import Movimiento
+from app.models.auditoria      import Auditoria
+from app.models.token_blacklist import TokenBlacklist
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
