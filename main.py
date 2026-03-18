@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+import app.db.all_models  # noqa: F401 — registra todos los mappers de SQLAlchemy
 from app.api.v1 import auth
 
 app = FastAPI(

@@ -17,13 +17,13 @@ def login(datos: LoginRequest, db: Session = Depends(get_db)):
     """Endpoint de inicio de sesión"""
     usuario = db.query(Usuario).filter(Usuario.correo == datos.correo).first()
 
-    if not usuario or not verify_password(datos.contrasena, usuario.contrasena_hash):
+    if not usuario or not verify_password(datos.contrasena, usuario.contrasena):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas"
         )
 
-    if not usuario.estado:
+    if usuario.estado != "ACTIVO":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuario inactivo"

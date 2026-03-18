@@ -26,7 +26,7 @@ def get_current_user(
     user_id = payload.get("user_id")
     usuario = db.query(Usuario).filter(Usuario.id == user_id).first()
 
-    if not usuario or not usuario.estado:
+    if not usuario or usuario.estado != "ACTIVO":
         raise HTTPException(status_code=401, detail="Usuario inválido")
 
     return usuario
