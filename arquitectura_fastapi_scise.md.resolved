@@ -1,0 +1,392 @@
+# Arquitectura por Capas – SCISE Backend (FastAPI / Python)
+
+> Análisis basado en el código real del proyecto. Stack: FastAPI 0.135, SQLAlchemy 2.0, Pydantic 2, PostgreSQL (psycopg2), python-jose, passlib/bcrypt, Alembic.
+
+---
+
+## 1. Diagnóstico actual
+
+### Cómo está organizado hoy
+
+```
+SCISE-Backend/
+├── main.py
+├── app/
+│   ├── api/v1/
+│   │   └── auth.py           ← único router registrado
+│   ├── core/
+│   │   ├── config.py         ← Settings (pydantic-settings)
+│   │   ├── security.py       ← hash, verify, create/decode token
+│   │   └── deps.py           ← get_current_user, require_role
+│   ├── db/
+│   │   ├── base.py           ← DeclarativeBase
+│   │   ├── session.py        ← engine + get_db
+│   │   ├── seed.py
+│   │   └── all_models.py     ← registro global de mappers
+│   ├── models/               ← ORM models (7 archivos)
+│   ├── schemas/
+│   │   └── auth.py           ← LoginRequest, TokenResponse, UserInToken
+│   └── services/
+│       └── movimiento_service.py
+```
+
+### Problemas detectados
+
+| # | Problema | Archivo | Impacto |
+|---|----------|---------|---------|
+| 1 | **La lógica de negocio vive en el router** | [api/v1/auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/api/v1/auth.py) | El endpoint `/login` realiza la consulta a BD, verifica contraseña, evalúa estado, genera token y retorna la respuesta, todo en una misma función. |
+| 2 | **No existe capa de repositorios** | — | Los services y routes acceden directamente a `db.query(Model)` sin encapsular las consultas. |
+| 3 | **No existe capa de controllers** | — | No hay separación entre "coordinar request/response" y "lógica de negocio". |
+| 4 | **`oauth2_scheme` duplicado** | [api/v1/auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/api/v1/auth.py) + [core/deps.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/deps.py) | Mismo objeto creado dos veces; el de [auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/api/v1/auth.py) es innecesario. |
+| 5 | **Acceso directo a BD en el service** | [movimiento_service.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/services/movimiento_service.py) | El service hace `db.query(Modelo)` directamente — está bien para un service, pero la capa repository falta. |
+| 6 | **[security.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py) mezcla responsabilidades** | [core/security.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py) | Hash de contraseña + operaciones JWT en el mismo módulo. Deberían separarse en `utils/`. |
+| 7 | **No existen utilities de token** | — | [create_access_token](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py#19-28) y [decode_access_token](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py#29-35) viven en [core/security.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py) en lugar de en una capa de utils dedicada. |
+| 8 | **No existen middlewares propios** | — | Solo CORS. No hay logging middleware, ni manejo global de errores personalizado. |
+| 9 | **Solo un módulo en `schemas/`** | [schemas/auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/schemas/auth.py) | El resto de entidades (equipos, estudiantes, movimientos…) no tienen schemas Pydantic separados. |
+| 10 | **[main.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/main.py) no registra todos los routers** | [main.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/main.py) | Solo incluye `auth.router`. Los demás módulos del sistema aún no tienen routers creados. |
+| 11 | **`app/core/logger` referenciado pero no existe** | [movimiento_service.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/services/movimiento_service.py) L10 | `from app.core.logger import get_logger` — este módulo no aparece en la estructura explorada. |
+
+---
+
+## 2. Arquitectura propuesta para FastAPI
+
+### Principio general
+
+FastAPI resuelve de manera idiomática algunas capas con herramientas propias:
+
+- **Validación** → `Pydantic BaseModel` definidos en `schemas/`
+- **Middleware de auth** → **Dependency Injection** (`Depends`) en lugar de un middleware HTTP clásico. *Se explica en detalle en §5.*
+- **Controllers** → funciones delgadas en `api/` que solo coordinan request/response y delegan al service.
+
+### Flujo de ejecución
+
+```
+HTTP Request
+    │
+    ▼
+[Middleware CORS / Logging]      ← app-level middleware (Starlette)
+    │
+    ▼
+[Router]  app/api/v1/<módulo>.py
+    │
+    ├─ [Schema Pydantic]          ← validación automática del body/query/path
+    │
+    ├─ [Dependency: get_db]       ← sesión de BD inyectada
+    │
+    ├─ [Dependency: get_current_user]  ← validación JWT (solo rutas protegidas)
+    │
+    ▼
+[Controller]  ← función que solo coordina, llama al service
+    │
+    ▼
+[Service]     ← lógica de negocio, reglas del dominio
+    │
+    ▼
+[Repository]  ← consultas a BD encapsuladas
+    │
+    ▼
+[SQLAlchemy Model / DB]
+```
+
+---
+
+## 3. Estructura de carpetas sugerida
+
+```
+SCISE-Backend/
+├── main.py                        ← entry point, registra routers y middlewares
+├── alembic/
+├── alembic.ini
+├── requirements.txt
+│
+└── app/
+    ├── api/
+    │   └── v1/
+    │       ├── __init__.py
+    │       ├── router.py          ← [NEW] agrega todos los sub-routers del v1
+    │       ├── auth.py            ← solo endpoints de auth (login, logout)
+    │       ├── usuarios.py        ← [NEW]
+    │       ├── estudiantes.py     ← [NEW]
+    │       ├── equipos.py         ← [NEW]
+    │       └── movimientos.py     ← [NEW]
+    │
+    ├── controllers/               ← [NEW] capa nueva
+    │   ├── __init__.py
+    │   ├── auth_controller.py
+    │   ├── usuario_controller.py
+    │   ├── estudiante_controller.py
+    │   ├── equipo_controller.py
+    │   └── movimiento_controller.py
+    │
+    ├── services/
+    │   ├── __init__.py
+    │   ├── auth_service.py        ← [NEW] lógica de login/logout separada
+    │   ├── usuario_service.py     ← [NEW]
+    │   ├── estudiante_service.py  ← [NEW]
+    │   ├── equipo_service.py      ← [NEW]
+    │   └── movimiento_service.py  ← [MODIFY] eliminar acceso directo a DB
+    │
+    ├── repositories/              ← [NEW] capa nueva
+    │   ├── __init__.py
+    │   ├── usuario_repository.py
+    │   ├── estudiante_repository.py
+    │   ├── equipo_repository.py
+    │   ├── movimiento_repository.py
+    │   ├── auditoria_repository.py
+    │   └── token_blacklist_repository.py
+    │
+    ├── schemas/
+    │   ├── __init__.py
+    │   ├── auth.py                ← LoginRequest, TokenResponse, UserInToken
+    │   ├── usuario.py             ← [NEW]
+    │   ├── estudiante.py          ← [NEW]
+    │   ├── equipo.py              ← [NEW]
+    │   └── movimiento.py          ← [NEW]
+    │
+    ├── models/                    ← sin cambios estructurales
+    │   ├── roles.py
+    │   ├── usuarios.py
+    │   ├── estudiantes.py
+    │   ├── equipos.py
+    │   ├── movimientos.py
+    │   ├── auditoria.py
+    │   └── token_blacklist.py
+    │
+    ├── middlewares/               ← [NEW]
+    │   ├── __init__.py
+    │   └── logging_middleware.py
+    │
+    ├── core/
+    │   ├── config.py              ← sin cambios
+    │   ├── deps.py                ← [MODIFY] mantener get_current_user, require_role
+    │   └── logger.py              ← [NEW] get_logger (ya referenciado pero faltaba)
+    │
+    ├── utils/                     ← [NEW]
+    │   ├── __init__.py
+    │   ├── token_utils.py         ← create_access_token, decode_access_token, build_token_payload
+    │   └── password_utils.py      ← hash_password, verify_password
+    │
+    └── db/
+        ├── base.py
+        ├── session.py
+        ├── all_models.py
+        └── seed.py
+```
+
+---
+
+## 4. Manejo de validación
+
+### Estrategia en FastAPI
+
+FastAPI valida **automáticamente** los cuerpos de request, path params y query params usando los tipos anotados en la firma de la función del endpoint.
+
+**Cómo debe funcionar:**
+
+```python
+# app/schemas/equipo.py
+from pydantic import BaseModel, Field
+from typing import Optional
+
+class EquipoCreate(BaseModel):
+    nombre: str = Field(..., min_length=2, max_length=150)
+    serial: str = Field(..., min_length=3)
+    tipo_equipo: Optional[str] = None
+
+class EquipoResponse(BaseModel):
+    id: int
+    nombre: str
+    estado: str
+
+    model_config = {"from_attributes": True}   # Pydantic v2
+
+# app/api/v1/equipos.py
+@router.post("/", response_model=EquipoResponse, status_code=201)
+def crear_equipo(
+    datos: EquipoCreate,               # ← body validado automáticamente
+    usuario: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return equipo_controller.crear(datos, usuario, db)
+```
+
+- Si la validación falla, FastAPI retorna `422 Unprocessable Entity` con detalle de cada campo inválido.
+- **Dónde vive:** `app/schemas/<entidad>.py`
+- **Nunca** hacer validación manualmente en el controller ni en el service.
+
+---
+
+## 5. Manejo de autenticación por token
+
+### Por qué dependency y no middleware HTTP
+
+| Criterio | Middleware HTTP | Dependency (`Depends`) |
+|----------|----------------|------------------------|
+| Acceso a BD por request | Complejo (sin `Depends`) | Natural (`Depends(get_db)`) |
+| Granularidad (ruta a ruta) | No — aplica global | Sí — se declara por endpoint |
+| Integración con OpenAPI `/docs` | No | Sí (candado en Swagger UI) |
+| Recomendado por FastAPI docs | No para auth | **Sí** |
+
+> **Conclusión:** Para autenticación en FastAPI el patrón correcto es **dependency injection**. El middleware HTTP se reserva para responsabilidades verdaderamente transversales (logging, tracing, CORS).
+
+### Capa `utils/token_utils.py` (nueva)
+
+```python
+# app/utils/token_utils.py
+from datetime import datetime, timedelta
+from typing import Optional
+import uuid
+from jose import jwt, JWTError
+from app.core.config import settings
+
+def build_token_payload(user_id: int, rol: str) -> dict:
+    """Construye el payload estándar del token con JTI único."""
+    return {
+        "user_id": user_id,
+        "rol": rol,
+        "jti": str(uuid.uuid4()),
+    }
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Codifica y firma el JWT."""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+
+def decode_access_token(token: str) -> Optional[dict]:
+    """Decodifica el JWT. Retorna None si el token es inválido o expirado."""
+    try:
+        return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    except JWTError:
+        return None
+
+def extract_jti(payload: dict) -> Optional[str]:
+    """Extrae el JTI del payload decodificado."""
+    return payload.get("jti")
+
+def extract_user_id(payload: dict) -> Optional[int]:
+    """Extrae el user_id del payload decodificado."""
+    return payload.get("user_id")
+```
+
+### Dependency [core/deps.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/deps.py) (mejorado)
+
+```python
+# app/core/deps.py
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.models.usuarios import Usuario
+from app.repositories.token_blacklist_repository import is_token_revoked
+from app.repositories.usuario_repository import get_usuario_by_id
+from app.utils.token_utils import decode_access_token, extract_jti, extract_user_id
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> Usuario:
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+
+    if is_token_revoked(db, extract_jti(payload)):
+        raise HTTPException(status_code=401, detail="Token revocado")
+
+    usuario = get_usuario_by_id(db, extract_user_id(payload))
+    if not usuario or usuario.estado != "ACTIVO":
+        raise HTTPException(status_code=401, detail="Usuario inválido o inactivo")
+
+    return usuario
+
+def require_role(rol_requerido: str):
+    def checker(usuario: Usuario = Depends(get_current_user)):
+        if usuario.rol.nombre != rol_requerido:
+            raise HTTPException(status_code=403, detail=f"Requiere rol: {rol_requerido}")
+        return usuario
+    return checker
+```
+
+### Cómo se aplica en cada ruta
+
+```python
+# Ruta pública (no requiere token)
+@router.post("/login", response_model=TokenResponse)
+def login(datos: LoginRequest, db: Session = Depends(get_db)):
+    return auth_controller.login(datos, db)
+
+# Ruta protegida (cualquier usuario autenticado)
+@router.get("/movimientos", response_model=list[MovimientoResponse])
+def listar(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),   # ← aquí
+):
+    return movimiento_controller.listar(db, usuario)
+
+# Ruta protegida con rol específico
+@router.post("/equipos", response_model=EquipoResponse)
+def crear_equipo(
+    datos: EquipoCreate,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(require_role("ADMIN")),  # ← aquí
+):
+    return equipo_controller.crear(datos, db, usuario)
+```
+
+---
+
+## 6. Refactor propuesto
+
+### Archivos a crear (nuevos)
+
+| Archivo | Propósito |
+|---------|-----------|
+| `app/utils/token_utils.py` | Helpers de JWT (create, decode, extract) |
+| `app/utils/password_utils.py` | hash_password, verify_password (mover desde security.py) |
+| `app/repositories/usuario_repository.py` | CRUD de usuarios |
+| `app/repositories/estudiante_repository.py` | CRUD de estudiantes |
+| `app/repositories/equipo_repository.py` | CRUD de equipos |
+| `app/repositories/movimiento_repository.py` | CRUD de movimientos |
+| `app/repositories/auditoria_repository.py` | Escritura de auditoría |
+| `app/repositories/token_blacklist_repository.py` | is_revoked, add_to_blacklist |
+| `app/controllers/auth_controller.py` | login_handler, logout_handler |
+| `app/controllers/movimiento_controller.py` | asociar, ingreso, salida |
+| `app/services/auth_service.py` | Lógica de login/logout extraída de route |
+| `app/middlewares/logging_middleware.py` | Log de requests/responses |
+| `app/core/logger.py` | get_logger() (estaba referenciado pero faltaba) |
+| `app/api/v1/router.py` | Agrupador de todos los sub-routers v1 |
+
+### Archivos a modificar
+
+| Archivo | Cambio |
+|---------|--------|
+| [app/api/v1/auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/api/v1/auth.py) | Eliminar lógica de negocio → delegar a `auth_controller` |
+| [app/core/deps.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/deps.py) | Usar funciones de `utils/token_utils.py` y repos |
+| [app/core/security.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py) | Dejar solo imports o eliminar (responsabilidades movidas a `utils/`) |
+| [app/services/movimiento_service.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/services/movimiento_service.py) | Reemplazar `db.query()` directos por llamadas al repositorio |
+| [main.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/main.py) | Registrar `api/v1/router.py` en lugar de cada router individual |
+
+### Archivos sin cambios necesarios
+
+- `app/models/*` — bien implementados con SQLAlchemy 2 y `DeclarativeBase`
+- [app/db/base.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/db/base.py), [session.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/db/session.py), [all_models.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/db/all_models.py) — correctos
+- [app/core/config.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/config.py) — correcto con `pydantic-settings`
+- `alembic/` — sin cambios
+
+---
+
+## 7. Observaciones técnicas
+
+| # | Observación |
+|---|-------------|
+| 1 | **`app/core/logger.py` faltante:** [movimiento_service.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/services/movimiento_service.py) importa `from app.core.logger import get_logger` pero el archivo no existe. Debe crearse. |
+| 2 | **`datetime.utcnow()` deprecado:** En Python 3.12+ usar `datetime.now(timezone.utc)`. Afecta a [equipos.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/models/equipos.py), [movimientos.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/models/movimientos.py), [token_blacklist.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/models/token_blacklist.py) y [security.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py). |
+| 3 | **`usuario: dict` en [TokenResponse](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/schemas/auth.py#7-11):** El campo `usuario` debería ser [UserInToken](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/schemas/auth.py#12-17) (tipado fuerte) en lugar de `dict` para aprovechar la serialización automática de Pydantic. |
+| 4 | **`oauth2_scheme` duplicado:** Definido tanto en [api/v1/auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/api/v1/auth.py) como en [core/deps.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/deps.py). Usar solo el de [deps.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/deps.py). |
+| 5 | **Falta `__init__.py`** en varias carpetas de `app/` — Python 3 los tolera pero es buena práctica incluirlos para paquetes explícitos. |
+| 6 | **No hay manejo global de errores:** Conviene añadir un `@app.exception_handler` para `HTTPException` y `RequestValidationError` y estandarizar las respuestas de error. |
+| 7 | **No hay paginación:** Las rutas de listado futuras deberían incluir `skip: int = 0, limit: int = 20` como query params con validación Pydantic. |
+| 8 | **Solo un router registrado:** El sistema tiene 7 modelos pero solo `auth` tiene router. Los demás módulos están en services pero sin endpoints expuestos. |
