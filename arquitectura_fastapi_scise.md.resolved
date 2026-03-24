@@ -4,51 +4,7 @@
 
 ---
 
-## 1. Diagnóstico actual
-
-### Cómo está organizado hoy
-
-```
-SCISE-Backend/
-├── main.py
-├── app/
-│   ├── api/v1/
-│   │   └── auth.py           ← único router registrado
-│   ├── core/
-│   │   ├── config.py         ← Settings (pydantic-settings)
-│   │   ├── security.py       ← hash, verify, create/decode token
-│   │   └── deps.py           ← get_current_user, require_role
-│   ├── db/
-│   │   ├── base.py           ← DeclarativeBase
-│   │   ├── session.py        ← engine + get_db
-│   │   ├── seed.py
-│   │   └── all_models.py     ← registro global de mappers
-│   ├── models/               ← ORM models (7 archivos)
-│   ├── schemas/
-│   │   └── auth.py           ← LoginRequest, TokenResponse, UserInToken
-│   └── services/
-│       └── movimiento_service.py
-```
-
-### Problemas detectados
-
-| # | Problema | Archivo | Impacto |
-|---|----------|---------|---------|
-| 1 | **La lógica de negocio vive en el router** | [api/v1/auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/api/v1/auth.py) | El endpoint `/login` realiza la consulta a BD, verifica contraseña, evalúa estado, genera token y retorna la respuesta, todo en una misma función. |
-| 2 | **No existe capa de repositorios** | — | Los services y routes acceden directamente a `db.query(Model)` sin encapsular las consultas. |
-| 3 | **No existe capa de controllers** | — | No hay separación entre "coordinar request/response" y "lógica de negocio". |
-| 4 | **`oauth2_scheme` duplicado** | [api/v1/auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/api/v1/auth.py) + [core/deps.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/deps.py) | Mismo objeto creado dos veces; el de [auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/api/v1/auth.py) es innecesario. |
-| 5 | **Acceso directo a BD en el service** | [movimiento_service.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/services/movimiento_service.py) | El service hace `db.query(Modelo)` directamente — está bien para un service, pero la capa repository falta. |
-| 6 | **[security.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py) mezcla responsabilidades** | [core/security.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py) | Hash de contraseña + operaciones JWT en el mismo módulo. Deberían separarse en `utils/`. |
-| 7 | **No existen utilities de token** | — | [create_access_token](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py#19-28) y [decode_access_token](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py#29-35) viven en [core/security.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/core/security.py) en lugar de en una capa de utils dedicada. |
-| 8 | **No existen middlewares propios** | — | Solo CORS. No hay logging middleware, ni manejo global de errores personalizado. |
-| 9 | **Solo un módulo en `schemas/`** | [schemas/auth.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/schemas/auth.py) | El resto de entidades (equipos, estudiantes, movimientos…) no tienen schemas Pydantic separados. |
-| 10 | **[main.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/main.py) no registra todos los routers** | [main.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/main.py) | Solo incluye `auth.router`. Los demás módulos del sistema aún no tienen routers creados. |
-| 11 | **`app/core/logger` referenciado pero no existe** | [movimiento_service.py](file:///Users/cristian/Documents/Sena/T7/grado2/SCISE-Project/SCISE-Backend/app/services/movimiento_service.py) L10 | `from app.core.logger import get_logger` — este módulo no aparece en la estructura explorada. |
-
----
-
-## 2. Arquitectura propuesta para FastAPI
+1. Arquitectura propuesta para FastAPI
 
 ### Principio general
 
@@ -90,7 +46,7 @@ HTTP Request
 
 ---
 
-## 3. Estructura de carpetas sugerida
+## 3. Estructura de carpetas
 
 ```
 SCISE-Backend/
