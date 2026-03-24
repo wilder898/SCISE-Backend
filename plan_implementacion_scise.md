@@ -202,66 +202,67 @@ Roles del equipo:
 4. Integrante D: Especialista Base de Datos PostgreSQL
 
 ### Bloque 1 - Infra + DB (A y D)
-- [ ] Crear estructura por capas (`api`, `controllers`, `services`, `repositories`, `schemas`).
-- [ ] Diseñar esquema PostgreSQL final y constraints.
-- [ ] Crear migraciones Alembic iniciales.
-- [ ] Crear indices clave:
+- [ ]  A Crear estructura por capas (`api`, `controllers`, `services`, `repositories`, `schemas`).
+- [ ]  D Diseñar esquema PostgreSQL final y constraints.
+- [ ]  D Crear migraciones Alembic iniciales.
+- [ ]  D Crear indices clave:
   - [ ] `estudiantes(documento)` unique
   - [ ] `equipos(serial)` unique
   - [ ] `movimientos(estudiante_id, timestamp)`
   - [ ] `movimientos(equipo_id, timestamp)`
-- [ ] Crear seed minimo (rol admin y usuario admin).
-- [ ] Validar conexion y healthcheck.
+- [ ] D Crear seed minimo (rol admin y usuario admin).
+- [ ] A+D Validar conexion y healthcheck.
 
 ### Bloque 2 - Auth (A + C + D)
-- [ ] Implementar `POST /auth/login`.
-- [ ] Implementar `GET /auth/me`.
-- [ ] Implementar `POST /auth/logout` con blacklist.
-- [ ] Integrar `Depends(get_current_user)` y `require_role`.
-- [ ] Conectar login del frontend a API real.
-- [ ] Validar hash de password y politicas de seguridad.
+- [ ] A Implementar `POST /auth/login`.
+- [ ] A Implementar `GET /auth/me`.
+- [ ] A Implementar `POST /auth/logout` con blacklist.
+- [ ] A Integrar `Depends(get_current_user)` y `require_role`.
+- [ ] C Conectar login del frontend a API real.
+- [ ] D Validar hash de password y politicas de seguridad.
 
 ### Bloque 3 - Operacion ingreso/salida (B + C + D)
-- [ ] `GET /estudiantes/by-documento/{documento}`
-- [ ] `GET /estudiantes/{id}/equipos`
-- [ ] `POST /movimientos/ingresos` (batch)
-- [ ] `GET /movimientos/activos/estudiante/{id}`
-- [ ] `POST /movimientos/salidas` (batch)
-- [ ] Reglas transaccionales:
+- [ ] B `GET /estudiantes/by-documento/{documento}`
+- [ ] B`GET /estudiantes/{id}/equipos`
+- [ ] B`POST /movimientos/ingresos` (batch)
+- [ ] B`GET /movimientos/activos/estudiante/{id}`
+- [ ] B`POST /movimientos/salidas` (batch)
+- [ ] D Reglas transaccionales:
   - [ ] evitar doble ingreso activo por equipo
   - [ ] validar salida solo si existe ingreso activo
-- [ ] Conectar cajas de `Ingreso` y `Salida` al backend.
+- [ ] C Conectar cajas de `Ingreso` y `Salida` al backend.
+- [ ] C Eliminar dependencia de src/lib/movimientos.ts y src/lib/operacion.ts para flujo principal.
 
 ### Bloque 4 - Reportes (B + C + D)
-- [ ] `GET /reportes/movimientos/resumen`
-- [ ] `GET /reportes/movimientos/historial` con paginacion/filtros
-- [ ] `GET /reportes/movimientos/export.csv`
-- [ ] `GET /reportes/movimientos/export.pdf` (inicial o placeholder)
-- [ ] Optimizar consultas SQL para historico y resumen.
-- [ ] Conectar `CajaEstadisticas`, `CajaFiltros`, `CajaHistorialMovimientos`.
+- [ ] B `GET /reportes/movimientos/resumen`
+- [ ] B `GET /reportes/movimientos/historial` con paginacion/filtros
+- [ ] B `GET /reportes/movimientos/export.csv`
+- [ ] B `GET /reportes/movimientos/export.pdf` (inicial o placeholder)
+- [ ] D Optimizar consultas SQL para historico y resumen.
+- [ ] C Conectar `CajaEstadisticas`, `CajaFiltros`, `CajaHistorialMovimientos`.
 
 ### Bloque 5 - Configuracion (A + C + D)
-- [ ] `GET /usuarios`
-- [ ] `POST /usuarios`
-- [ ] `PATCH /usuarios/{id}`
-- [ ] `PATCH /usuarios/{id}/estado`
-- [ ] `PATCH /usuarios/{id}/password`
-- [ ] `DELETE /usuarios/{id}`
-- [ ] `GET /auditoria`
-- [ ] Conectar tabla, modales y caja auditoria a API real.
+- [ ] A `GET /usuarios`
+- [ ] A `POST /usuarios`
+- [ ] A `PATCH /usuarios/{id}`
+- [ ] A `PATCH /usuarios/{id}/estado`
+- [ ] A `PATCH /usuarios/{id}/password`
+- [ ] A `DELETE /usuarios/{id}`
+- [ ] A `GET /auditoria`
+- [ ] D Conectar tabla, modales y caja auditoria a API real.
 
 ### Bloque 6 - Gestion usuarios operativos (B + C + D)
-- [ ] CRUD `estudiantes`
-- [ ] CRUD `equipos`
-- [ ] Asociar/desasociar equipo-estudiante
-- [ ] Conectar `UsuariosView`, `NewUserModal`, `UserEditModal`.
+- [ ] B CRUD `estudiantes`
+- [ ] B CRUD `equipos`
+- [ ] C Asociar/desasociar equipo-estudiante
+- [ ] D Conectar `UsuariosView`, `NewUserModal`, `UserEditModal`.
 
 ### QA y cierre (todos)
-- [ ] Tests unitarios (services/repositories)
-- [ ] Tests integracion API + DB
-- [ ] Tests E2E front para flujos criticos
-- [ ] Documentacion OpenAPI y coleccion Postman
-- [ ] Checklist de seguridad (roles, token revocado, password policy)
+- [ ] A y B Tests unitarios (services/repositories)
+- [ ] A, B, D Tests integracion API + DB
+- [ ] C Tests E2E front para flujos criticos
+- [ ] D Documentacion OpenAPI y coleccion Postman
+- [ ] A y B Checklist de seguridad (roles, token revocado, password policy)
 
 ---
 
