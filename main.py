@@ -4,6 +4,7 @@ from app.core.config import settings
 import app.db.all_models  # noqa: F401 — registra todos los mappers de SQLAlchemy
 from app.api.v1.router import api_router
 from app.middlewares.logging_middleware import LoggingMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="SCISE API",
@@ -16,7 +17,10 @@ app = FastAPI(
 # CORS debe estar antes que Logging para que las preflight requests también sean logeadas.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins.split(","),
+    allow_origins=[
+        "http://localhost:4321",
+        "http://127.0.0.1:4321",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
