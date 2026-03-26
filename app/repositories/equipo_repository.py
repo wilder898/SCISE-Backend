@@ -29,6 +29,18 @@ def list_equipos(db: Session, skip: int = 0, limit: int = 50) -> list[Equipo]:
     return db.query(Equipo).offset(skip).limit(limit).all()
 
 
+def list_equipos_by_estudiante(
+    db: Session,
+    estudiante_id: int,
+    solo_disponibles_ingreso: bool = True,
+) -> list[Equipo]:
+    query = db.query(Equipo).filter(Equipo.estudiante_id == estudiante_id)
+    if solo_disponibles_ingreso:
+        query = query.filter(Equipo.estado != "INGRESADO")
+
+    return query.order_by(Equipo.nombre.asc()).all()
+
+
 def create_equipo(db: Session, equipo: Equipo) -> Equipo:
     db.add(equipo)
     db.commit()

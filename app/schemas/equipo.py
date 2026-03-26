@@ -31,3 +31,12 @@ class EquipoResponse(EquipoBase):
     estudiante_id: int
 
     model_config = {"from_attributes": True}
+
+
+class EquipoAsociadoResponse(BaseModel):
+    id: int
+    nombre: str
+    serial: str
+    tipo: Optional[str] = None
+    descripcion: Optional[str] = None
+    estado: str

@@ -18,6 +18,17 @@ def get_estudiante_activo_by_barcode(db: Session, codigo_barras: str) -> Optiona
     )
 
 
+def get_estudiante_activo_by_documento(db: Session, documento: str) -> Optional[Estudiante]:
+    return (
+        db.query(Estudiante)
+        .filter(
+            Estudiante.documento == documento,
+            Estudiante.estado == "ACTIVO",
+        )
+        .first()
+    )
+
+
 def list_estudiantes(db: Session, skip: int = 0, limit: int = 50) -> list[Estudiante]:
     return db.query(Estudiante).offset(skip).limit(limit).all()
 

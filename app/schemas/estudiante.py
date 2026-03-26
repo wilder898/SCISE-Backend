@@ -22,3 +22,12 @@ class EstudianteResponse(EstudianteBase):
     estado: str
 
     model_config = {"from_attributes": True}
+
+
+class EstudianteLookupResponse(BaseModel):
+    id: int
+    nombre: str
+    documento: str
+    estado: str
+
+    model_config = {"from_attributes": True}

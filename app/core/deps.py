@@ -8,7 +8,7 @@ from app.repositories.usuario_repository import get_usuario_by_id
 from app.utils.token_utils import decode_access_token, extract_jti, extract_user_id
 
 # Única definición de oauth2_scheme en todo el proyecto
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
 def get_current_user(
