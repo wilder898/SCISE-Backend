@@ -8,6 +8,15 @@ def get_equipo_by_id(db: Session, equipo_id: int) -> Optional[Equipo]:
     return db.query(Equipo).filter(Equipo.id == equipo_id).first()
 
 
+def get_equipo_by_id_with_lock(db: Session, equipo_id: int) -> Optional[Equipo]:
+    """Obtiene el equipo por ID con bloqueo de fila para operaciones concurrentes."""
+    return db.execute(
+        select(Equipo)
+        .where(Equipo.id == equipo_id)
+        .with_for_update()
+    ).scalar_one_or_none()
+
+
 def get_equipo_by_barcode(db: Session, codigo_barras: str) -> Optional[Equipo]:
     return (
         db.query(Equipo)

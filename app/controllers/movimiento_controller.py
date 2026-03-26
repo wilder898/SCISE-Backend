@@ -22,3 +22,13 @@ def registrar_salida(
 ):
     """Coordina el registro de salida de un equipo."""
     return movimiento_service.registrar_salida(db, codigo_barras_est, codigo_barras_eq, usuario)
+
+
+def registrar_ingresos_batch(
+    db: Session,
+    estudiante_id: int,
+    equipos_ids: list[int],
+    usuario: Usuario,
+):
+    """Coordina el registro batch de ingresos por IDs de equipo."""
+    return movimiento_service.registrar_ingresos_batch(db, estudiante_id, equipos_ids, usuario)

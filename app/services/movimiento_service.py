@@ -3,9 +3,14 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models.movimientos import Movimiento
 from app.models.usuarios import Usuario
-from app.repositories.estudiante_repository import get_estudiante_activo_by_barcode
-from app.repositories.equipo_repository import get_equipo_by_barcode_with_lock
-from app.repositories.movimiento_repository import create_movimiento
+from app.repositories.estudiante_repository import (
+    get_estudiante_activo_by_barcode,
+    get_estudiante_by_id,
+)
+from app.repositories.equipo_repository import (
+    get_equipo_by_barcode_with_lock,
+    get_equipo_by_id_with_lock,
+)
 from app.repositories.auditoria_repository import create_auditoria
 from app.core.logger import get_logger
 
@@ -114,3 +119,90 @@ def registrar_salida(
     db.refresh(movimiento)
     return movimiento
 
+
+def registrar_ingresos_batch(
+    db: Session,
+    estudiante_id: int,
+    equipos_ids: list[int],
+    usuario: Usuario,
+) -> dict:
+    if len(set(equipos_ids)) != len(equipos_ids):
+        raise HTTPException(400, "La lista de equipos contiene duplicados")
+
+    estudiante = get_estudiante_by_id(db, estudiante_id)
+    if not estudiante or estudiante.estado != "ACTIVO":
+        raise HTTPException(404, "Estudiante no encontrado o inactivo")
+
+    movimientos_creados: list[tuple[Movimiento, str]] = []
+
+    try:
+        for equipo_id in equipos_ids:
+            equipo = get_equipo_by_id_with_lock(db, equipo_id)
+            if not equipo:
+                raise HTTPException(404, f"Equipo no encontrado: {equipo_id}")
+
+            if equipo.estado == "INGRESADO":
+                logger.warning(
+                    "Ingreso duplicado batch | equipo_id=%s | usuario=%s",
+                    equipo_id,
+                    usuario.id,
+                )
+                raise HTTPException(409, f"El equipo {equipo_id} ya está INGRESADO")
+
+            if equipo.estudiante_id != estudiante.id:
+                raise HTTPException(
+                    403,
+                    f"El equipo {equipo_id} no está asociado al estudiante {estudiante.id}",
+                )
+
+            estado_anterior = equipo.estado
+            movimiento = Movimiento(
+                usuario_id=usuario.id,
+                equipo_id=equipo.id,
+                estudiante_id=estudiante.id,
+                tipo_movimiento="INGRESO",
+                fecha_registro=datetime.utcnow(),
+            )
+            equipo.estado = "INGRESADO"
+
+            db.add(movimiento)
+            create_auditoria(
+                db,
+                usuario.id,
+                "REGISTRAR_INGRESO_BATCH",
+                "INSERT",
+                equipo.id,
+                estado_anterior,
+                "INGRESADO",
+                "/api/v1/movimientos/ingresos",
+            )
+            movimientos_creados.append((movimiento, equipo.serial))
+
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        logger.exception("Fallo registrando ingresos batch")
+        raise HTTPException(500, "Error interno al registrar ingresos")
+
+    movimientos_respuesta = []
+    for movimiento, serial in movimientos_creados:
+        db.refresh(movimiento)
+        movimientos_respuesta.append(
+            {
+                "movimiento_id": movimiento.id,
+                "equipo_id": movimiento.equipo_id,
+                "serial": serial,
+                "fecha_registro": movimiento.fecha_registro,
+                "tipo_movimiento": movimiento.tipo_movimiento,
+            }
+        )
+
+    return {
+        "estudiante_id": estudiante.id,
+        "total_registrados": len(movimientos_respuesta),
+        "movimientos": movimientos_respuesta,
+        "detail": "Ingresos registrados correctamente",
+    }
