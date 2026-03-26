@@ -50,6 +50,18 @@ def list_equipos_by_estudiante(
     return query.order_by(Equipo.nombre.asc()).all()
 
 
+def list_equipos_ingresados_by_estudiante(db: Session, estudiante_id: int) -> list[Equipo]:
+    return (
+        db.query(Equipo)
+        .filter(
+            Equipo.estudiante_id == estudiante_id,
+            Equipo.estado == "INGRESADO",
+        )
+        .order_by(Equipo.nombre.asc())
+        .all()
+    )
+
+
 def create_equipo(db: Session, equipo: Equipo) -> Equipo:
     db.add(equipo)
     db.commit()

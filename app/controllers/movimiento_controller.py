@@ -32,3 +32,18 @@ def registrar_ingresos_batch(
 ):
     """Coordina el registro batch de ingresos por IDs de equipo."""
     return movimiento_service.registrar_ingresos_batch(db, estudiante_id, equipos_ids, usuario)
+
+
+def listar_equipos_activos_por_estudiante(db: Session, estudiante_id: int, usuario: Usuario):
+    """Coordina el listado de equipos activos de un estudiante."""
+    return movimiento_service.listar_equipos_activos_por_estudiante(db, estudiante_id)
+
+
+def registrar_salidas_batch(
+    db: Session,
+    estudiante_id: int,
+    equipos_ids: list[int],
+    usuario: Usuario,
+):
+    """Coordina el registro batch de salidas por IDs de equipo."""
+    return movimiento_service.registrar_salidas_batch(db, estudiante_id, equipos_ids, usuario)
