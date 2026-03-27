@@ -17,3 +17,8 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     usuario: UserInToken        # tipado fuerte en lugar de dict
+
+
+class AccessTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"

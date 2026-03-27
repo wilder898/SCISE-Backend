@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.movimientos import Movimiento
+from typing import Optional
 
 
 def create_movimiento(db: Session, movimiento: Movimiento) -> Movimiento:
@@ -28,4 +29,20 @@ def list_movimientos_by_estudiante(db: Session, estudiante_id: int) -> list[Movi
         .filter(Movimiento.estudiante_id == estudiante_id)
         .order_by(Movimiento.fecha_registro.desc())
         .all()
+    )
+
+
+def get_latest_movimiento_by_equipo_and_tipo(
+    db: Session,
+    equipo_id: int,
+    tipo_movimiento: str,
+) -> Optional[Movimiento]:
+    return (
+        db.query(Movimiento)
+        .filter(
+            Movimiento.equipo_id == equipo_id,
+            Movimiento.tipo_movimiento == tipo_movimiento,
+        )
+        .order_by(Movimiento.fecha_registro.desc())
+        .first()
     )
