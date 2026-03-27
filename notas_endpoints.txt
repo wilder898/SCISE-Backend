@@ -1,0 +1,25 @@
+******************************************* GET /usuarios
+
+Los agregué por 2 razones principales:
+
+Están alineados con el plan del proyecto para listados de usuarios (filtros + paginación) en plan_implementacion_scise.md.
+Evitan traer toda la tabla de usuarios de una vez, y permiten conectar fácilmente búsquedas/filtros del frontend.
+Dónde se usan en código:
+
+Definición de query params: usuarios.py
+Validación/lógica: usuario_service.py
+Filtros SQL/paginación: usuario_repository.py
+Uso de cada query:
+
+q: búsqueda general (nombre, documento, correo, area)
+rol: filtra por rol (ej. Administrador)
+estado: filtra por estado (ACTIVO o INACTIVO)
+skip: desplazamiento para paginación (offset)
+limit: tamaño de página
+Ejemplos:
+
+GET /api/v1/usuarios
+GET /api/v1/usuarios?q=sena&estado=ACTIVO&skip=0&limit=20
+GET /api/v1/usuarios?rol=Administrador
+
+*******************************************

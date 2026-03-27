@@ -27,3 +27,26 @@ class UsuarioResponse(UsuarioBase):
     rol_id: int
 
     model_config = {"from_attributes": True}
+
+
+class PaginationMeta(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    has_next: bool
+
+
+class UsuarioSistemaListItem(BaseModel):
+    id: int
+    documento: str
+    nombre: str
+    correo: Optional[EmailStr] = None
+    area: Optional[str] = None
+    estado: str
+    rol_id: int
+    rol: Optional[str] = None
+
+
+class PaginatedUsuarioSistemaResponse(BaseModel):
+    data: list[UsuarioSistemaListItem]
+    meta: PaginationMeta
