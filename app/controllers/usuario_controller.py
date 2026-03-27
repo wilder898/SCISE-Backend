@@ -1,6 +1,7 @@
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.services import usuario_service
+from app.schemas.usuario import UsuarioSistemaCreate
 
 
 def listar_usuarios(
@@ -19,3 +20,7 @@ def listar_usuarios(
         skip=skip,
         limit=limit,
     )
+
+
+def crear_usuario(db: Session, datos: UsuarioSistemaCreate) -> dict:
+    return usuario_service.crear_usuario_sistema(db=db, datos=datos)

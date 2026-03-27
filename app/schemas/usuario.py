@@ -50,3 +50,24 @@ class UsuarioSistemaListItem(BaseModel):
 class PaginatedUsuarioSistemaResponse(BaseModel):
     data: list[UsuarioSistemaListItem]
     meta: PaginationMeta
+
+
+class UsuarioSistemaCreate(BaseModel):
+    documento: str = Field(..., min_length=1, max_length=50)
+    nombre: str = Field(..., min_length=1, max_length=150)
+    correo: Optional[EmailStr] = None
+    area: Optional[str] = Field(None, max_length=100)
+    contrasena: str = Field(..., min_length=6, max_length=128)
+    rol_id: int = Field(..., gt=0)
+    estado: str = Field(default="ACTIVO", max_length=20)
+
+
+class UsuarioSistemaResponse(BaseModel):
+    id: int
+    documento: str
+    nombre: str
+    correo: Optional[EmailStr] = None
+    area: Optional[str] = None
+    estado: str
+    rol_id: int
+    rol: Optional[str] = None
