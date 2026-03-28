@@ -1,0 +1,49 @@
+******************************************* GET /usuarios
+
+Los agregué por 2 razones principales:
+
+Están alineados con el plan del proyecto para listados de usuarios (filtros + paginación) en plan_implementacion_scise.md.
+Evitan traer toda la tabla de usuarios de una vez, y permiten conectar fácilmente búsquedas/filtros del frontend.
+Dónde se usan en código:
+
+Definición de query params: usuarios.py
+Validación/lógica: usuario_service.py
+Filtros SQL/paginación: usuario_repository.py
+Uso de cada query:
+
+q: búsqueda general (nombre, documento, correo, area)
+rol: filtra por rol (ej. Administrador)
+estado: filtra por estado (ACTIVO o INACTIVO)
+skip: desplazamiento para paginación (offset)
+limit: tamaño de página
+Ejemplos:
+
+GET /api/v1/usuarios
+GET /api/v1/usuarios?q=sena&estado=ACTIVO&skip=0&limit=20
+GET /api/v1/usuarios?rol=Administrador
+
+******************************************* PATCH /usuarios*
+
+Para que sirven los siguientes endpoints comparados con PATCH /usuarios/{id}?
+
+PATCH /usuarios/{id}/estado
+PATCH /usuarios/{id}/password
+
+
+
+Sirven para separar operaciones sensibles y tener reglas más claras que un PATCH /usuarios/{id} genérico.
+
+PATCH /usuarios/{id}
+Uso: editar datos de perfil/administrativos (ej. nombre, correo, area, rol_id, etc.).
+
+PATCH /usuarios/{id}/estado
+Uso: activar/inactivar cuenta de forma explícita.
+Ventaja: permisos, auditoría y validaciones específicas para estado (sin mezclar con otros cambios).
+
+PATCH /usuarios/{id}/password
+Uso: cambiar contraseña.
+Ventaja: flujo de seguridad dedicado (hash obligatorio, política de contraseña, confirmación, invalidar sesiones/tokens, auditoría reforzada).
+
+En resumen: PATCH /usuarios/{id} es “perfil”, mientras /estado y /password son acciones críticas separadas para control y seguridad.
+
+*******************************************
