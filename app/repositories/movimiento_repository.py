@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from typing import Optional
 from sqlalchemy import case, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.equipos import Equipo
 from app.models.estudiantes import Estudiante
 from app.models.movimientos import Movimiento
@@ -17,6 +17,44 @@ def create_movimiento(db: Session, movimiento: Movimiento) -> Movimiento:
 
 def list_movimientos(db: Session, skip: int = 0, limit: int = 50) -> list[Movimiento]:
     return db.query(Movimiento).order_by(Movimiento.fecha_registro.desc()).offset(skip).limit(limit).all()
+
+
+def list_movimientos_filtrados(
+    db: Session,
+    tipo: Optional[str] = None,
+    fecha: Optional[date] = None,
+    estudiante_id: Optional[int] = None,
+    serial: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20,
+) -> tuple[list[Movimiento], int]:
+    query = db.query(Movimiento).options(joinedload(Movimiento.equipo))
+
+    if tipo:
+        query = query.filter(func.upper(Movimiento.tipo_movimiento) == tipo.upper())
+
+    if fecha:
+        fecha_inicio = datetime.combine(fecha, time.min)
+        fecha_fin = datetime.combine(fecha, time.max)
+        query = query.filter(
+            Movimiento.fecha_registro >= fecha_inicio,
+            Movimiento.fecha_registro <= fecha_fin,
+        )
+
+    if estudiante_id:
+        query = query.filter(Movimiento.estudiante_id == estudiante_id)
+
+    if serial:
+        query = query.join(Equipo, Equipo.id == Movimiento.equipo_id).filter(Equipo.serial.ilike(f"%{serial}%"))
+
+    total = query.order_by(None).count()
+    rows = (
+        query.order_by(Movimiento.fecha_registro.desc(), Movimiento.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return rows, total
 
 
 def list_movimientos_by_equipo(db: Session, equipo_id: int) -> list[Movimiento]:
@@ -49,6 +87,21 @@ def get_latest_movimiento_by_equipo_and_tipo(
             Movimiento.tipo_movimiento == tipo_movimiento,
         )
         .order_by(Movimiento.fecha_registro.desc())
+        .first()
+    )
+
+
+def get_movimiento_by_id(
+    db: Session,
+    movimiento_id: int,
+) -> Optional[Movimiento]:
+    return (
+        db.query(Movimiento)
+        .options(
+            joinedload(Movimiento.equipo),
+            joinedload(Movimiento.estudiante),
+        )
+        .filter(Movimiento.id == movimiento_id)
         .first()
     )
 
