@@ -6,10 +6,16 @@ from app.repositories.rol_repository import get_rol_by_id
 from app.repositories.usuario_repository import (
     create_usuario,
     get_usuario_by_correo,
+    get_usuario_by_id,
     get_usuario_by_documento,
     list_usuarios_filtrados,
+    update_usuario,
 )
-from app.schemas.usuario import UsuarioSistemaCreate
+from app.schemas.usuario import (
+    UsuarioSistemaCreate,
+    UsuarioSistemaEstadoUpdate,
+    UsuarioSistemaPatch,
+)
 from app.utils.password_utils import hash_password
 
 
@@ -68,6 +74,16 @@ def crear_usuario_sistema(db: Session, datos: UsuarioSistemaCreate) -> dict:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Estado inválido. Use ACTIVO o INACTIVO",
         )
+    if not documento:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El documento es obligatorio",
+        )
+    if not nombre:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El nombre es obligatorio",
+        )
 
     if get_usuario_by_documento(db, documento):
         raise HTTPException(
@@ -101,6 +117,105 @@ def crear_usuario_sistema(db: Session, datos: UsuarioSistemaCreate) -> dict:
     if not usuario_creado.rol:
         usuario_creado.rol = rol
     return _map_usuario_response(usuario_creado)
+
+
+def actualizar_usuario_sistema(
+    db: Session,
+    usuario_id: int,
+    datos: UsuarioSistemaPatch,
+) -> dict:
+    usuario = get_usuario_by_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    cambios = datos.model_dump(exclude_unset=True)
+    if not cambios:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debe enviar al menos un campo para actualizar",
+        )
+
+    rol_asignado = None
+
+    if "documento" in cambios and cambios["documento"] is not None:
+        documento = cambios["documento"].strip()
+        if not documento:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El documento es obligatorio",
+            )
+        existente = get_usuario_by_documento(db, documento)
+        if existente and existente.id != usuario.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ya existe un usuario con ese documento",
+            )
+        usuario.documento = documento
+
+    if "nombre" in cambios and cambios["nombre"] is not None:
+        nombre = cambios["nombre"].strip()
+        if not nombre:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre es obligatorio",
+            )
+        usuario.nombre = nombre
+
+    if "correo" in cambios:
+        correo = cambios["correo"].strip().lower() if cambios["correo"] else None
+        if correo:
+            existente = get_usuario_by_correo(db, correo)
+            if existente and existente.id != usuario.id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Ya existe un usuario con ese correo",
+                )
+        usuario.correo = correo
+
+    if "area" in cambios:
+        area = cambios["area"].strip() if cambios["area"] else None
+        usuario.area = area
+
+    if "rol_id" in cambios and cambios["rol_id"] is not None:
+        rol_asignado = get_rol_by_id(db, cambios["rol_id"])
+        if not rol_asignado:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Rol inválido",
+            )
+        usuario.rol_id = cambios["rol_id"]
+
+    usuario_actualizado = update_usuario(db, usuario)
+    if rol_asignado:
+        usuario_actualizado.rol = rol_asignado
+    return _map_usuario_response(usuario_actualizado)
+
+
+def actualizar_estado_usuario_sistema(
+    db: Session,
+    usuario_id: int,
+    datos: UsuarioSistemaEstadoUpdate,
+) -> dict:
+    usuario = get_usuario_by_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    estado = datos.estado.strip().upper()
+    if estado not in ESTADOS_VALIDOS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Estado inválido. Use ACTIVO o INACTIVO",
+        )
+
+    usuario.estado = estado
+    usuario_actualizado = update_usuario(db, usuario)
+    return _map_usuario_response(usuario_actualizado)
 
 
 def _map_usuario_response(usuario: Usuario) -> dict:

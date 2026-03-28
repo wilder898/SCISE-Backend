@@ -60,6 +60,21 @@ class UsuarioSistemaCreate(BaseModel):
     contrasena: str = Field(..., min_length=6, max_length=128)
     rol_id: int = Field(..., gt=0)
     estado: str = Field(default="ACTIVO", max_length=20)
+    model_config = {"extra": "forbid"}
+
+
+class UsuarioSistemaPatch(BaseModel):
+    documento: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    nombre: Optional[str] = Field(default=None, min_length=1, max_length=150)
+    correo: Optional[EmailStr] = None
+    area: Optional[str] = Field(default=None, max_length=100)
+    rol_id: Optional[int] = Field(default=None, gt=0)
+    model_config = {"extra": "forbid"}
+
+
+class UsuarioSistemaEstadoUpdate(BaseModel):
+    estado: str = Field(..., min_length=1, max_length=20)
+    model_config = {"extra": "forbid"}
 
 
 class UsuarioSistemaResponse(BaseModel):

@@ -1,7 +1,11 @@
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.services import usuario_service
-from app.schemas.usuario import UsuarioSistemaCreate
+from app.schemas.usuario import (
+    UsuarioSistemaCreate,
+    UsuarioSistemaEstadoUpdate,
+    UsuarioSistemaPatch,
+)
 
 
 def listar_usuarios(
@@ -24,3 +28,23 @@ def listar_usuarios(
 
 def crear_usuario(db: Session, datos: UsuarioSistemaCreate) -> dict:
     return usuario_service.crear_usuario_sistema(db=db, datos=datos)
+
+
+def actualizar_usuario(db: Session, usuario_id: int, datos: UsuarioSistemaPatch) -> dict:
+    return usuario_service.actualizar_usuario_sistema(
+        db=db,
+        usuario_id=usuario_id,
+        datos=datos,
+    )
+
+
+def actualizar_estado_usuario(
+    db: Session,
+    usuario_id: int,
+    datos: UsuarioSistemaEstadoUpdate,
+) -> dict:
+    return usuario_service.actualizar_estado_usuario_sistema(
+        db=db,
+        usuario_id=usuario_id,
+        datos=datos,
+    )
