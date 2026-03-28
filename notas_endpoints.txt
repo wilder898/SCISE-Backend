@@ -46,4 +46,20 @@ Ventaja: flujo de seguridad dedicado (hash obligatorio, política de contraseña
 
 En resumen: PATCH /usuarios/{id} es “perfil”, mientras /estado y /password son acciones críticas separadas para control y seguridad.
 
-*******************************************
+******************************************* /auditoria
+
+GET /auditoria
+Sirve para trazabilidad técnica y de seguridad: quién hizo qué, cuándo, sobre qué registro y con qué cambio (valor_anterior/valor_nuevo, url, actor).
+
+GET /reportes/...
+Sirve para análisis operativo/negocio: métricas, históricos y exportables para gestión (resúmenes, dashboards, CSV/PDF).
+
+En corto:
+
+auditoria = control, cumplimiento, investigación de incidentes.
+reportes = operación, indicadores y toma de decisiones.
+Ejemplo real:
+
+Si un admin inactiva un usuario, eso debe verse en /auditoria.
+Si quieres “cuántas salidas hubo hoy”, eso va en /reportes.
+Por eso no se reemplazan; se complementan.
