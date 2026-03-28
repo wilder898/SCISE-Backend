@@ -12,8 +12,10 @@ from app.repositories.usuario_repository import (
     update_usuario,
 )
 from app.schemas.usuario import (
+    MessageResponse,
     UsuarioSistemaCreate,
     UsuarioSistemaEstadoUpdate,
+    UsuarioSistemaPasswordUpdate,
     UsuarioSistemaPatch,
 )
 from app.utils.password_utils import hash_password
@@ -216,6 +218,29 @@ def actualizar_estado_usuario_sistema(
     usuario.estado = estado
     usuario_actualizado = update_usuario(db, usuario)
     return _map_usuario_response(usuario_actualizado)
+
+
+def actualizar_password_usuario_sistema(
+    db: Session,
+    usuario_id: int,
+    datos: UsuarioSistemaPasswordUpdate,
+) -> MessageResponse:
+    usuario = get_usuario_by_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    if datos.nueva_password != datos.confirmacion:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La confirmación de contraseña no coincide",
+        )
+
+    usuario.contrasena = hash_password(datos.nueva_password)
+    update_usuario(db, usuario)
+    return {"detail": "Contraseña actualizada correctamente"}
 
 
 def _map_usuario_response(usuario: Usuario) -> dict:

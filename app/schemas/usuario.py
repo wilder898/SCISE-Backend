@@ -77,6 +77,16 @@ class UsuarioSistemaEstadoUpdate(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class UsuarioSistemaPasswordUpdate(BaseModel):
+    nueva_password: str = Field(..., min_length=6, max_length=128)
+    confirmacion: str = Field(..., min_length=6, max_length=128)
+    model_config = {"extra": "forbid"}
+
+
+class MessageResponse(BaseModel):
+    detail: str
+
+
 class UsuarioSistemaResponse(BaseModel):
     id: int
     documento: str

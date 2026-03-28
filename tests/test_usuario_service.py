@@ -5,6 +5,7 @@ from app.services import usuario_service
 from app.schemas.usuario import (
     UsuarioSistemaCreate,
     UsuarioSistemaEstadoUpdate,
+    UsuarioSistemaPasswordUpdate,
     UsuarioSistemaPatch,
 )
 
@@ -376,6 +377,80 @@ def test_actualizar_estado_usuario_sistema_no_encontrado_lanza_404(monkeypatch):
             db=object(),
             usuario_id=999,
             datos=UsuarioSistemaEstadoUpdate(estado="ACTIVO"),
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Usuario no encontrado"
+
+
+def test_actualizar_password_usuario_sistema_ok(monkeypatch):
+    usuario = UsuarioFake(
+        usuario_id=30,
+        documento="3001",
+        nombre="Usuario Password",
+        correo="password@sena.edu.co",
+        area="Sistemas",
+        estado="ACTIVO",
+        rol_id=2,
+        rol_nombre="Usuario",
+    )
+    usuario.contrasena = "hash_viejo"
+
+    monkeypatch.setattr(usuario_service, "get_usuario_by_id", lambda _db, _id: usuario)
+    monkeypatch.setattr(usuario_service, "hash_password", lambda raw: f"hashed:{raw}")
+    monkeypatch.setattr(usuario_service, "update_usuario", lambda _db, u: u)
+
+    resultado = usuario_service.actualizar_password_usuario_sistema(
+        db=object(),
+        usuario_id=30,
+        datos=UsuarioSistemaPasswordUpdate(
+            nueva_password="NuevaClave123",
+            confirmacion="NuevaClave123",
+        ),
+    )
+
+    assert usuario.contrasena == "hashed:NuevaClave123"
+    assert resultado == {"detail": "Contraseña actualizada correctamente"}
+
+
+def test_actualizar_password_usuario_sistema_confirmacion_invalida_lanza_400(monkeypatch):
+    usuario = UsuarioFake(
+        usuario_id=30,
+        documento="3001",
+        nombre="Usuario Password",
+        correo="password@sena.edu.co",
+        area="Sistemas",
+        estado="ACTIVO",
+        rol_id=2,
+        rol_nombre="Usuario",
+    )
+    monkeypatch.setattr(usuario_service, "get_usuario_by_id", lambda _db, _id: usuario)
+
+    with pytest.raises(HTTPException) as exc_info:
+        usuario_service.actualizar_password_usuario_sistema(
+            db=object(),
+            usuario_id=30,
+            datos=UsuarioSistemaPasswordUpdate(
+                nueva_password="NuevaClave123",
+                confirmacion="OtraClave123",
+            ),
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "La confirmación de contraseña no coincide"
+
+
+def test_actualizar_password_usuario_sistema_no_encontrado_lanza_404(monkeypatch):
+    monkeypatch.setattr(usuario_service, "get_usuario_by_id", lambda _db, _id: None)
+
+    with pytest.raises(HTTPException) as exc_info:
+        usuario_service.actualizar_password_usuario_sistema(
+            db=object(),
+            usuario_id=999,
+            datos=UsuarioSistemaPasswordUpdate(
+                nueva_password="NuevaClave123",
+                confirmacion="NuevaClave123",
+            ),
         )
 
     assert exc_info.value.status_code == 404

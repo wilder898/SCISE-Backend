@@ -4,6 +4,7 @@ from app.services import usuario_service
 from app.schemas.usuario import (
     UsuarioSistemaCreate,
     UsuarioSistemaEstadoUpdate,
+    UsuarioSistemaPasswordUpdate,
     UsuarioSistemaPatch,
 )
 
@@ -44,6 +45,18 @@ def actualizar_estado_usuario(
     datos: UsuarioSistemaEstadoUpdate,
 ) -> dict:
     return usuario_service.actualizar_estado_usuario_sistema(
+        db=db,
+        usuario_id=usuario_id,
+        datos=datos,
+    )
+
+
+def actualizar_password_usuario(
+    db: Session,
+    usuario_id: int,
+    datos: UsuarioSistemaPasswordUpdate,
+) -> dict:
+    return usuario_service.actualizar_password_usuario_sistema(
         db=db,
         usuario_id=usuario_id,
         datos=datos,

@@ -6,9 +6,11 @@ from app.core.deps import require_role
 from app.db.session import get_db
 from app.models.usuarios import Usuario
 from app.schemas.usuario import (
+    MessageResponse,
     PaginatedUsuarioSistemaResponse,
     UsuarioSistemaCreate,
     UsuarioSistemaEstadoUpdate,
+    UsuarioSistemaPasswordUpdate,
     UsuarioSistemaPatch,
     UsuarioSistemaResponse,
 )
@@ -107,6 +109,30 @@ def actualizar_estado_usuario(
     _usuario_actual: Usuario = Depends(require_role("Administrador")),
 ):
     return usuario_controller.actualizar_estado_usuario(
+        db=db,
+        usuario_id=usuario_id,
+        datos=datos,
+    )
+
+
+@router.patch(
+    "/{usuario_id}/password",
+    response_model=MessageResponse,
+    summary="Actualizar contraseña del usuario del sistema",
+    responses={
+        400: {"description": "Datos inválidos"},
+        401: {"description": "No autenticado"},
+        403: {"description": "Sin permisos (requiere Administrador)"},
+        404: {"description": "Usuario no encontrado"},
+    },
+)
+def actualizar_password_usuario(
+    usuario_id: int = Path(..., gt=0),
+    datos: UsuarioSistemaPasswordUpdate = Body(...),
+    db: Session = Depends(get_db),
+    _usuario_actual: Usuario = Depends(require_role("Administrador")),
+):
+    return usuario_controller.actualizar_password_usuario(
         db=db,
         usuario_id=usuario_id,
         datos=datos,
