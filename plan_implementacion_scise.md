@@ -242,13 +242,13 @@ Roles del equipo:
 - [ ] C Conectar `CajaEstadisticas`, `CajaFiltros`, `CajaHistorialMovimientos`.
 
 ### Bloque 5 - Configuracion (A + C + D)
-- [ ] A `GET /usuarios`
-- [ ] A `POST /usuarios`
-- [ ] A `PATCH /usuarios/{id}`
-- [ ] A `PATCH /usuarios/{id}/estado`
-- [ ] A `PATCH /usuarios/{id}/password`
-- [ ] A `DELETE /usuarios/{id}`
-- [ ] A `GET /auditoria`
+- [X] A `GET /usuarios`
+- [X] A `POST /usuarios`
+- [X] A `PATCH /usuarios/{id}`
+- [X] A `PATCH /usuarios/{id}/estado`
+- [X] A `PATCH /usuarios/{id}/password`
+- [X] A `DELETE /usuarios/{id}`
+- [X] A `GET /auditoria`
 - [ ] D Conectar tabla, modales y caja auditoria a API real.
 
 ### Bloque 6 - Gestion usuarios operativos (B + C + D)
