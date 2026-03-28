@@ -137,3 +137,25 @@ def actualizar_password_usuario(
         usuario_id=usuario_id,
         datos=datos,
     )
+
+
+@router.delete(
+    "/{usuario_id}",
+    response_model=MessageResponse,
+    summary="Eliminar usuario del sistema",
+    responses={
+        401: {"description": "No autenticado"},
+        403: {"description": "Sin permisos (requiere Administrador)"},
+        404: {"description": "Usuario no encontrado"},
+        409: {"description": "Usuario con registros asociados"},
+    },
+)
+def eliminar_usuario(
+    usuario_id: int = Path(..., gt=0),
+    db: Session = Depends(get_db),
+    _usuario_actual: Usuario = Depends(require_role("Administrador")),
+):
+    return usuario_controller.eliminar_usuario(
+        db=db,
+        usuario_id=usuario_id,
+    )

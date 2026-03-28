@@ -1,10 +1,12 @@
 from typing import Optional
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.models.usuarios import Usuario
 from app.repositories.rol_repository import get_rol_by_id
 from app.repositories.usuario_repository import (
     create_usuario,
+    delete_usuario,
     get_usuario_by_correo,
     get_usuario_by_id,
     get_usuario_by_documento,
@@ -241,6 +243,29 @@ def actualizar_password_usuario_sistema(
     usuario.contrasena = hash_password(datos.nueva_password)
     update_usuario(db, usuario)
     return {"detail": "Contraseña actualizada correctamente"}
+
+
+def eliminar_usuario_sistema(
+    db: Session,
+    usuario_id: int,
+) -> MessageResponse:
+    usuario = get_usuario_by_id(db, usuario_id)
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    try:
+        delete_usuario(db, usuario)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede eliminar el usuario porque tiene registros asociados",
+        )
+
+    return {"detail": "Usuario eliminado correctamente"}
 
 
 def _map_usuario_response(usuario: Usuario) -> dict:

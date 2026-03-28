@@ -1,5 +1,6 @@
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 
 from app.services import usuario_service
 from app.schemas.usuario import (
@@ -455,3 +456,76 @@ def test_actualizar_password_usuario_sistema_no_encontrado_lanza_404(monkeypatch
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Usuario no encontrado"
+
+
+def test_eliminar_usuario_sistema_ok(monkeypatch):
+    usuario = UsuarioFake(
+        usuario_id=40,
+        documento="4001",
+        nombre="Usuario Eliminar",
+        correo="delete@sena.edu.co",
+        area="Soporte",
+        estado="ACTIVO",
+        rol_id=2,
+        rol_nombre="Usuario",
+    )
+    monkeypatch.setattr(usuario_service, "get_usuario_by_id", lambda _db, _id: usuario)
+    monkeypatch.setattr(usuario_service, "delete_usuario", lambda _db, _u: None)
+
+    resultado = usuario_service.eliminar_usuario_sistema(
+        db=object(),
+        usuario_id=40,
+    )
+
+    assert resultado == {"detail": "Usuario eliminado correctamente"}
+
+
+def test_eliminar_usuario_sistema_no_encontrado_lanza_404(monkeypatch):
+    monkeypatch.setattr(usuario_service, "get_usuario_by_id", lambda _db, _id: None)
+
+    with pytest.raises(HTTPException) as exc_info:
+        usuario_service.eliminar_usuario_sistema(
+            db=object(),
+            usuario_id=999,
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Usuario no encontrado"
+
+
+def test_eliminar_usuario_sistema_con_referencias_lanza_409(monkeypatch):
+    usuario = UsuarioFake(
+        usuario_id=40,
+        documento="4001",
+        nombre="Usuario Eliminar",
+        correo="delete@sena.edu.co",
+        area="Soporte",
+        estado="ACTIVO",
+        rol_id=2,
+        rol_nombre="Usuario",
+    )
+    monkeypatch.setattr(usuario_service, "get_usuario_by_id", lambda _db, _id: usuario)
+
+    def _delete_con_error(_db, _u):
+        raise IntegrityError("DELETE usuarios", params={}, orig=Exception("fk"))
+
+    monkeypatch.setattr(usuario_service, "delete_usuario", _delete_con_error)
+
+    class DbFake:
+        def __init__(self):
+            self.rollback_called = False
+
+        def rollback(self):
+            self.rollback_called = True
+
+    db = DbFake()
+
+    with pytest.raises(HTTPException) as exc_info:
+        usuario_service.eliminar_usuario_sistema(
+            db=db,
+            usuario_id=40,
+        )
+
+    assert db.rollback_called is True
+    assert exc_info.value.status_code == 409
+    assert exc_info.value.detail == "No se puede eliminar el usuario porque tiene registros asociados"

@@ -61,3 +61,10 @@ def actualizar_password_usuario(
         usuario_id=usuario_id,
         datos=datos,
     )
+
+
+def eliminar_usuario(db: Session, usuario_id: int) -> dict:
+    return usuario_service.eliminar_usuario_sistema(
+        db=db,
+        usuario_id=usuario_id,
+    )
