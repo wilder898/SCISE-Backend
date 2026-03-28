@@ -76,3 +76,25 @@ def exportar_historial_movimientos_csv(
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin,
     )
+
+
+def exportar_historial_movimientos_xlsx(
+    db: Session,
+    tipo: Optional[str] = None,
+    tipo_movimiento: Optional[str] = None,
+    fecha: Optional[date] = None,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+) -> tuple[str, bytes]:
+    return reportes_service.exportar_historial_movimientos_xlsx(
+        db=db,
+        tipo=tipo,
+        tipo_movimiento=tipo_movimiento,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+    )

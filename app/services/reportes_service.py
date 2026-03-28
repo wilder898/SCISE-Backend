@@ -1,14 +1,33 @@
 import csv
 from datetime import date
-from io import StringIO
+from io import BytesIO, StringIO
 from typing import Optional
 from fastapi import HTTPException, status
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 from sqlalchemy.orm import Session
 from app.repositories.movimiento_repository import (
     get_resumen_movimientos,
     list_movimientos_historial,
     list_movimientos_historial_for_export,
 )
+
+EXPORT_HEADERS = [
+    "Movimiento ID",
+    "Tipo Movimiento",
+    "Fecha Registro",
+    "Equipo ID",
+    "Serial",
+    "Equipo Nombre",
+    "Equipo Descripcion",
+    "Estado",
+    "Usuario Registro",
+    "Estudiante",
+    "Documento Estudiante",
+]
+
+EXPORT_COLUMN_WIDTHS = [16, 20, 22, 12, 22, 26, 36, 14, 24, 24, 22]
 
 
 def _normalizar_tipo(tipo: Optional[str], tipo_movimiento: Optional[str]) -> Optional[str]:
@@ -175,38 +194,87 @@ def exportar_historial_movimientos_csv(
         fecha_hasta=fecha_hasta_filtro,
     )
 
-    output = StringIO()
-    writer = csv.writer(output)
-    writer.writerow(
-        [
-            "movimiento_id",
-            "tipo_movimiento",
-            "fecha_registro",
-            "equipo_id",
-            "serial",
-            "equipo_nombre",
-            "equipo_descripcion",
-            "estado",
-            "usuario_nombre",
-            "estudiante_nombre",
-            "estudiante_documento",
-        ]
-    )
+    output = StringIO(newline="")
+    writer = csv.writer(output, delimiter=";", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(EXPORT_HEADERS)
     for registro in registros:
-        writer.writerow(
-            [
-                int(registro.movimiento_id),
-                registro.tipo_movimiento,
-                registro.fecha_registro.isoformat() if registro.fecha_registro else "",
-                int(registro.equipo_id),
-                registro.serial or "",
-                registro.equipo_nombre or "",
-                registro.equipo_descripcion or "",
-                registro.estado or "",
-                registro.usuario_nombre or "",
-                registro.estudiante_nombre or "",
-                registro.estudiante_documento or "",
-            ]
-        )
+        writer.writerow(_serialize_registro_for_export(registro))
 
-    return output.getvalue()
+    # Excel en configuraciones regionales es-CO suele usar ';' como separador.
+    # 'sep=;' fuerza la separacion por columnas al abrir el archivo.
+    csv_content = output.getvalue()
+    return "\ufeffsep=;\n" + csv_content
+
+
+def exportar_historial_movimientos_xlsx(
+    db: Session,
+    tipo: Optional[str] = None,
+    tipo_movimiento: Optional[str] = None,
+    fecha: Optional[date] = None,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+) -> tuple[str, bytes]:
+    tipo_normalizado = _normalizar_tipo(tipo=tipo, tipo_movimiento=tipo_movimiento)
+    fecha_filtro, fecha_desde_filtro, fecha_hasta_filtro = _normalizar_fechas(
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+    )
+
+    registros = list_movimientos_historial_for_export(
+        db=db,
+        tipo=tipo_normalizado,
+        fecha=fecha_filtro,
+        fecha_desde=fecha_desde_filtro,
+        fecha_hasta=fecha_hasta_filtro,
+    )
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Historial Movimientos"
+    worksheet.append(EXPORT_HEADERS)
+
+    for registro in registros:
+        worksheet.append(_serialize_registro_for_export(registro))
+
+    header_fill = PatternFill(fill_type="solid", fgColor="166534")
+    header_font = Font(color="FFFFFF", bold=True)
+    for column_index, _ in enumerate(EXPORT_HEADERS, start=1):
+        cell = worksheet.cell(row=1, column=column_index)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        worksheet.column_dimensions[get_column_letter(column_index)].width = EXPORT_COLUMN_WIDTHS[column_index - 1]
+
+    worksheet.freeze_panes = "A2"
+    worksheet.auto_filter.ref = f"A1:{get_column_letter(len(EXPORT_HEADERS))}{max(1, worksheet.max_row)}"
+    worksheet.sheet_view.zoomScale = 110
+
+    for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row):
+        for cell in row:
+            cell.alignment = Alignment(vertical="center", wrap_text=False)
+
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    return "reporte-movimientos.xlsx", output.read()
+
+
+def _serialize_registro_for_export(registro) -> list[str | int]:
+    return [
+        int(registro.movimiento_id),
+        registro.tipo_movimiento,
+        registro.fecha_registro.strftime("%Y-%m-%d %H:%M:%S") if registro.fecha_registro else "",
+        int(registro.equipo_id),
+        registro.serial or "",
+        registro.equipo_nombre or "",
+        registro.equipo_descripcion or "",
+        registro.estado or "",
+        registro.usuario_nombre or "",
+        registro.estudiante_nombre or "",
+        registro.estudiante_documento or "",
+    ]
