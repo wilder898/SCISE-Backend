@@ -1,4 +1,5 @@
 from typing import Optional
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.models.estudiantes import Estudiante
 
@@ -36,6 +37,23 @@ def get_estudiante_activo_by_documento(db: Session, documento: str) -> Optional[
         .filter(
             Estudiante.documento == documento,
             Estudiante.estado == "ACTIVO",
+        )
+        .first()
+    )
+
+
+def get_estudiante_activo_by_documento_o_codigo_barras(
+    db: Session,
+    identificador: str,
+) -> Optional[Estudiante]:
+    return (
+        db.query(Estudiante)
+        .filter(
+            Estudiante.estado == "ACTIVO",
+            or_(
+                Estudiante.documento == identificador,
+                Estudiante.codigo_barras == identificador,
+            ),
         )
         .first()
     )

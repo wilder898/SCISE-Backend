@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.estudiantes import Estudiante
 from app.repositories.estudiante_repository import (
     create_estudiante,
-    get_estudiante_activo_by_documento,
+    get_estudiante_activo_by_documento_o_codigo_barras,
     get_estudiante_by_codigo_barras,
     get_estudiante_by_documento,
     get_estudiante_by_email,
@@ -38,14 +38,17 @@ def _normalizar_rol(rol: str) -> str:
 
 
 def buscar_estudiante_activo_por_documento(db: Session, documento: str) -> Estudiante:
-    documento_normalizado = documento.strip()
-    if not documento_normalizado:
+    identificador_normalizado = documento.strip()
+    if not identificador_normalizado:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El documento es obligatorio",
+            detail="El identificador (documento o carnet) es obligatorio",
         )
 
-    estudiante = get_estudiante_activo_by_documento(db, documento_normalizado)
+    estudiante = get_estudiante_activo_by_documento_o_codigo_barras(
+        db,
+        identificador_normalizado,
+    )
     if not estudiante:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
