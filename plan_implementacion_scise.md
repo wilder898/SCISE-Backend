@@ -202,53 +202,53 @@ Roles del equipo:
 4. Integrante D: Especialista Base de Datos PostgreSQL
 
 ### Bloque 1 - Infra + DB (A y D)
-- [ ]  A Crear estructura por capas (`api`, `controllers`, `services`, `repositories`, `schemas`).
-- [ ]  D Diseñar esquema PostgreSQL final y constraints.
-- [ ]  D Crear migraciones Alembic iniciales.
-- [ ]  D Crear indices clave:
-  - [ ] `estudiantes(documento)` unique
-  - [ ] `equipos(serial)` unique
-  - [ ] `movimientos(estudiante_id, timestamp)`
-  - [ ] `movimientos(equipo_id, timestamp)`
-- [ ] D Crear seed minimo (rol admin y usuario admin).
-- [ ] A+D Validar conexion y healthcheck.
+- [/ ]  A Crear estructura por capas (`api`, `controllers`, `services`, `repositories`, `schemas`).
+- [/ ]  D Diseñar esquema PostgreSQL final y constraints.
+- [/ ]  D Crear migraciones Alembic iniciales.
+- [/ ]  D Crear indices clave:
+  - [/ ] `estudiantes(documento)` unique
+  - [/ ] `equipos(serial)` unique
+  - [/ ] `movimientos(estudiante_id, timestamp)`
+  - [/ ] `movimientos(equipo_id, timestamp)`
+- [/ ] D Crear seed minimo (rol admin y usuario admin).
+- [/ ] A+D Validar conexion y healthcheck.
 
 ### Bloque 2 - Auth (A + C + D)
-- [ ] A Implementar `POST /auth/login`.
-- [ ] A Implementar `GET /auth/me`.
-- [ ] A Implementar `POST /auth/logout` con blacklist.
-- [ ] A Integrar `Depends(get_current_user)` y `require_role`.
-- [ ] C Conectar login del frontend a API real.
-- [ ] D Validar hash de password y politicas de seguridad.
+- [ /] A Implementar `POST /auth/login`.
+- [/ ] A Implementar `GET /auth/me`.
+- [/ ] A Implementar `POST /auth/logout` con blacklist.
+- [/ ] A Integrar `Depends(get_current_user)` y `require_role`.
+- [/ ] C Conectar login del frontend a API real.
+- [/ ] D Validar hash de password y politicas de seguridad.
 
 ### Bloque 3 - Operacion ingreso/salida (B + C + D)
-- [ ] B `GET /estudiantes/by-documento/{documento}`
-- [ ] B`GET /estudiantes/{id}/equipos`
-- [ ] B`POST /movimientos/ingresos` (batch)
-- [ ] B`GET /movimientos/activos/estudiante/{id}`
-- [ ] B`POST /movimientos/salidas` (batch)
-- [ ] D Reglas transaccionales:
-  - [ ] evitar doble ingreso activo por equipo
-  - [ ] validar salida solo si existe ingreso activo
-- [ ] C Conectar cajas de `Ingreso` y `Salida` al backend.
-- [ ] C Eliminar dependencia de src/lib/movimientos.ts y src/lib/operacion.ts para flujo principal.
+- [ /] B `GET /estudiantes/by-documento/{documento}`
+- [ /] B`GET /estudiantes/{id}/equipos`
+- [/ ] B`POST /movimientos/ingresos` (batch)
+- [ /] B`GET /movimientos/activos/estudiante/{id}`
+- [ ]/ B`POST /movimientos/salidas` (batch)
+- [ /] D Reglas transaccionales:
+  - [ /] evitar doble ingreso activo por equipo
+  - [/ ] validar salida solo si existe ingreso activo
+- [ /] C Conectar cajas de `Ingreso` y `Salida` al backend.
+- [/ ] C Eliminar dependencia de src/lib/movimientos.ts y src/lib/operacion.ts para flujo principal.
 
 ### Bloque 4 - Reportes (B + C + D)
-- [ ] B `GET /reportes/movimientos/resumen`
-- [ ] B `GET /reportes/movimientos/historial` con paginacion/filtros
-- [ ] B `GET /reportes/movimientos/export.csv`
-- [ ] B `GET /reportes/movimientos/export.pdf` (inicial o placeholder)
+- [/ ] B `GET /reportes/movimientos/resumen`
+- [/ ] B `GET /reportes/movimientos/historial` con paginacion/filtros
+- [/ ] B `GET /reportes/movimientos/export.csv`
+- [ /] B `GET /reportes/movimientos/export.pdf` (inicial o placeholder)
 - [ ] D Optimizar consultas SQL para historico y resumen.
 - [ ] C Conectar `CajaEstadisticas`, `CajaFiltros`, `CajaHistorialMovimientos`.
 
 ### Bloque 5 - Configuracion (A + C + D)
-- [ ] A `GET /usuarios`
-- [ ] A `POST /usuarios`
-- [ ] A `PATCH /usuarios/{id}`
-- [ ] A `PATCH /usuarios/{id}/estado`
-- [ ] A `PATCH /usuarios/{id}/password`
-- [ ] A `DELETE /usuarios/{id}`
-- [ ] A `GET /auditoria`
+- [X] A `GET /usuarios`
+- [X] A `POST /usuarios`
+- [X] A `PATCH /usuarios/{id}`
+- [X] A `PATCH /usuarios/{id}/estado`
+- [X] A `PATCH /usuarios/{id}/password`
+- [X] A `DELETE /usuarios/{id}`
+- [X] A `GET /auditoria`
 - [ ] D Conectar tabla, modales y caja auditoria a API real.
 
 ### Bloque 6 - Gestion usuarios operativos (B + C + D)

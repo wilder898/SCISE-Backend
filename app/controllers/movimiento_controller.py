@@ -1,3 +1,4 @@
+from datetime import date
 from sqlalchemy.orm import Session
 from app.models.usuarios import Usuario
 from app.services import movimiento_service
@@ -47,3 +48,35 @@ def registrar_salidas_batch(
 ):
     """Coordina el registro batch de salidas por IDs de equipo."""
     return movimiento_service.registrar_salidas_batch(db, estudiante_id, equipos_ids, usuario)
+
+
+def listar_movimientos(
+    db: Session,
+    tipo: str | None = None,
+    fecha: date | None = None,
+    estudiante_id: int | None = None,
+    serial: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+) -> dict:
+    """Coordina el listado paginado de movimientos con filtros."""
+    return movimiento_service.listar_movimientos(
+        db=db,
+        tipo=tipo,
+        fecha=fecha,
+        estudiante_id=estudiante_id,
+        serial=serial,
+        skip=skip,
+        limit=limit,
+    )
+
+
+def obtener_movimiento_por_id(
+    db: Session,
+    movimiento_id: int,
+) -> dict:
+    """Coordina la consulta de detalle de un movimiento por ID."""
+    return movimiento_service.obtener_movimiento_por_id(
+        db=db,
+        movimiento_id=movimiento_id,
+    )
