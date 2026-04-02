@@ -112,6 +112,38 @@ def exportar_historial_movimientos_csv(
 
 
 @router.get(
+    "/export.pdf",
+    summary="Exportar historial de movimientos en PDF",
+)
+def exportar_historial_movimientos_pdf(
+    tipo: Optional[str] = Query(default=None),
+    tipo_movimiento: Optional[str] = Query(default=None),
+    fecha: Optional[date] = Query(default=None),
+    fecha_desde: Optional[date] = Query(default=None),
+    fecha_hasta: Optional[date] = Query(default=None),
+    fecha_inicio: Optional[date] = Query(default=None),
+    fecha_fin: Optional[date] = Query(default=None),
+    db: Session = Depends(get_db),
+    _usuario_actual: Usuario = Depends(require_role("Administrador")),
+):
+    filename, pdf_content = reportes_controller.exportar_historial_movimientos_pdf(
+        db=db,
+        tipo=tipo,
+        tipo_movimiento=tipo_movimiento,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+    )
+    return Response(
+        content=pdf_content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get(
     "/export.xlsx",
     summary="Exportar historial de movimientos en Excel (.xlsx)",
 )

@@ -1,5 +1,5 @@
 import csv
-from datetime import date
+from datetime import date, datetime
 from io import BytesIO, StringIO
 from typing import Optional
 from fastapi import HTTPException, status
@@ -28,6 +28,15 @@ EXPORT_HEADERS = [
 ]
 
 EXPORT_COLUMN_WIDTHS = [16, 20, 22, 12, 22, 26, 36, 14, 24, 24, 22]
+PDF_TABLE_COLUMNS = [
+    ("ID", 8),
+    ("TIPO", 8),
+    ("FECHA", 19),
+    ("SERIAL", 16),
+    ("USUARIO", 20),
+    ("ESTUDIANTE", 20),
+    ("DOCUMENTO", 14),
+]
 
 
 def _normalizar_tipo(tipo: Optional[str], tipo_movimiento: Optional[str]) -> Optional[str]:
@@ -264,6 +273,80 @@ def exportar_historial_movimientos_xlsx(
     return "reporte-movimientos.xlsx", output.read()
 
 
+def exportar_historial_movimientos_pdf(
+    db: Session,
+    tipo: Optional[str] = None,
+    tipo_movimiento: Optional[str] = None,
+    fecha: Optional[date] = None,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+) -> tuple[str, bytes]:
+    tipo_normalizado = _normalizar_tipo(tipo=tipo, tipo_movimiento=tipo_movimiento)
+    fecha_filtro, fecha_desde_filtro, fecha_hasta_filtro = _normalizar_fechas(
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+    )
+
+    registros = list_movimientos_historial_for_export(
+        db=db,
+        tipo=tipo_normalizado,
+        fecha=fecha_filtro,
+        fecha_desde=fecha_desde_filtro,
+        fecha_hasta=fecha_hasta_filtro,
+    )
+
+    filtros = []
+    if tipo_normalizado:
+        filtros.append(f"tipo={tipo_normalizado}")
+    if fecha_filtro:
+        filtros.append(f"fecha={fecha_filtro.isoformat()}")
+    if fecha_desde_filtro:
+        filtros.append(f"fecha_desde={fecha_desde_filtro.isoformat()}")
+    if fecha_hasta_filtro:
+        filtros.append(f"fecha_hasta={fecha_hasta_filtro.isoformat()}")
+
+    table_header = _build_pdf_table_header()
+    table_separator = _build_pdf_table_separator()
+    table_rows = [_build_pdf_table_row(registro) for registro in registros]
+
+    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    filtros_texto = ", ".join(filtros) if filtros else "sin filtros"
+
+    max_body_rows_per_page = 34
+    total_pages = max(1, ((len(table_rows) or 1) + max_body_rows_per_page - 1) // max_body_rows_per_page)
+    pages_lines: list[list[str]] = []
+
+    for page_index in range(total_pages):
+        start = page_index * max_body_rows_per_page
+        end = start + max_body_rows_per_page
+        page_rows = table_rows[start:end]
+
+        lines: list[str] = []
+        lines.extend(_wrap_pdf_line("SCISE - Reporte de Movimientos", 110))
+        lines.extend(_wrap_pdf_line(f"Generado: {generated_at}", 110))
+        lines.extend(_wrap_pdf_line(f"Filtros: {filtros_texto}", 110))
+        lines.extend(_wrap_pdf_line(f"Total registros: {len(registros)}", 110))
+        lines.extend(_wrap_pdf_line(f"Pagina {page_index + 1} de {total_pages}", 110))
+        lines.append("")
+
+        if not registros:
+            lines.extend(_wrap_pdf_line("No hay movimientos para los filtros seleccionados.", 110))
+        else:
+            lines.append(table_header)
+            lines.append(table_separator)
+            lines.extend(page_rows)
+            lines.append(table_separator)
+
+        pages_lines.append(lines)
+
+    return "reporte-movimientos.pdf", _build_multipage_pdf(pages_lines)
+
+
 def _serialize_registro_for_export(registro) -> list[str | int]:
     return [
         int(registro.movimiento_id),
@@ -278,3 +361,141 @@ def _serialize_registro_for_export(registro) -> list[str | int]:
         registro.estudiante_nombre or "",
         registro.estudiante_documento or "",
     ]
+
+
+def _escape_pdf_text(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _fit_pdf_column(text: str, width: int) -> str:
+    normalized = str(text or "").replace("\n", " ").strip()
+    if len(normalized) > width:
+        if width <= 3:
+            normalized = normalized[:width]
+        else:
+            normalized = normalized[: width - 3] + "..."
+    return normalized.ljust(width)
+
+
+def _build_pdf_table_header() -> str:
+    return " | ".join(_fit_pdf_column(title, width) for title, width in PDF_TABLE_COLUMNS)
+
+
+def _build_pdf_table_separator() -> str:
+    return "-+-".join("-" * width for _, width in PDF_TABLE_COLUMNS)
+
+
+def _build_pdf_table_row(registro) -> str:
+    fecha_texto = (
+        registro.fecha_registro.strftime("%Y-%m-%d %H:%M:%S")
+        if registro.fecha_registro
+        else "-"
+    )
+    values = [
+        int(registro.movimiento_id),
+        registro.tipo_movimiento or "",
+        fecha_texto,
+        registro.serial or "",
+        registro.usuario_nombre or "",
+        registro.estudiante_nombre or "",
+        registro.estudiante_documento or "",
+    ]
+    formatted = [
+        _fit_pdf_column(str(value), width)
+        for value, (_, width) in zip(values, PDF_TABLE_COLUMNS)
+    ]
+    return " | ".join(formatted)
+
+
+def _wrap_pdf_line(text: str, max_width: int) -> list[str]:
+    value = str(text or "")
+    if len(value) <= max_width:
+        return [value]
+
+    lines: list[str] = []
+    current = value
+    while len(current) > max_width:
+        split_at = current.rfind(" ", 0, max_width)
+        if split_at < 1:
+            split_at = max_width
+        lines.append(current[:split_at].strip())
+        current = current[split_at:].strip()
+    if current:
+        lines.append(current)
+    return lines or [""]
+
+
+def _build_pdf_page_stream(lines: list[str]) -> bytes:
+    safe_lines = [line if isinstance(line, str) else str(line) for line in lines]
+    max_lines = 54
+    trimmed_lines = safe_lines[:max_lines]
+
+    content_parts = ["BT", "/F1 9 Tf", "35 810 Td"]
+    for idx, line in enumerate(trimmed_lines):
+        if idx > 0:
+            content_parts.append("0 -14 Td")
+        content_parts.append(f"({_escape_pdf_text(line)}) Tj")
+    content_parts.append("ET")
+
+    content_text = "\n".join(content_parts) + "\n"
+    return content_text.encode("latin-1", errors="replace")
+
+
+def _build_multipage_pdf(pages_lines: list[list[str]]) -> bytes:
+    normalized_pages = pages_lines or [["SCISE - Reporte sin contenido"]]
+
+    page_object_ids: list[int] = []
+    content_object_ids: list[int] = []
+    objects: dict[int, bytes] = {
+        1: b"<< /Type /Catalog /Pages 2 0 R >>",
+        2: b"",  # filled after creating page objects
+        3: b"<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>",
+    }
+
+    next_object_id = 4
+    for page_lines in normalized_pages:
+        content_bytes = _build_pdf_page_stream(page_lines)
+        content_object_id = next_object_id
+        page_object_id = next_object_id + 1
+        next_object_id += 2
+
+        objects[content_object_id] = (
+            f"<< /Length {len(content_bytes)} >>\n".encode("ascii")
+            + b"stream\n"
+            + content_bytes
+            + b"endstream"
+        )
+        objects[page_object_id] = (
+            b"<< /Type /Page /Parent 2 0 R "
+            b"/MediaBox [0 0 595 842] "
+            b"/Resources << /Font << /F1 3 0 R >> >> "
+            + f"/Contents {content_object_id} 0 R >>".encode("ascii")
+        )
+
+        content_object_ids.append(content_object_id)
+        page_object_ids.append(page_object_id)
+
+    kids = " ".join(f"{page_id} 0 R" for page_id in page_object_ids)
+    objects[2] = f"<< /Type /Pages /Kids [{kids}] /Count {len(page_object_ids)} >>".encode("ascii")
+
+    max_object_id = max(objects.keys())
+    pdf = b"%PDF-1.4\n"
+    offsets = [0] * (max_object_id + 1)
+
+    for object_id in range(1, max_object_id + 1):
+        offsets[object_id] = len(pdf)
+        pdf += f"{object_id} 0 obj\n".encode("ascii")
+        pdf += objects[object_id]
+        pdf += b"\nendobj\n"
+
+    xref_offset = len(pdf)
+    pdf += f"xref\n0 {max_object_id + 1}\n".encode("ascii")
+    pdf += b"0000000000 65535 f \n"
+    for object_id in range(1, max_object_id + 1):
+        pdf += f"{offsets[object_id]:010d} 00000 n \n".encode("ascii")
+
+    pdf += f"trailer\n<< /Size {max_object_id + 1} /Root 1 0 R >>\n".encode("ascii")
+    pdf += b"startxref\n"
+    pdf += f"{xref_offset}\n".encode("ascii")
+    pdf += b"%%EOF\n"
+    return pdf
