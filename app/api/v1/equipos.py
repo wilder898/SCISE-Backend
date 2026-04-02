@@ -1,12 +1,45 @@
-from fastapi import APIRouter, Depends, status
+from typing import Optional
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from app.controllers import equipo_controller
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.usuarios import Usuario
-from app.schemas.equipo import EquipoCreate, EquipoResponse
+from app.schemas.equipo import (
+    EquipoCreate,
+    EquipoResponse,
+    PaginatedEquipoSistemaResponse,
+)
 
 router = APIRouter(prefix="/api/v1/equipos", tags=["Equipos"])
+
+
+@router.get(
+    "",
+    response_model=PaginatedEquipoSistemaResponse,
+    summary="Listar equipos registrados",
+    responses={
+        401: {"description": "No autenticado"},
+        400: {"description": "Filtros inválidos"},
+    },
+)
+def listar_equipos(
+    q: Optional[str] = Query(default=None, max_length=150),
+    tipo: Optional[str] = Query(default=None, max_length=100),
+    estado: Optional[str] = Query(default=None, max_length=20),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _usuario_actual: Usuario = Depends(get_current_user),
+):
+    return equipo_controller.listar_equipos(
+        db=db,
+        q=q,
+        tipo=tipo,
+        estado=estado,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.post("", response_model=EquipoResponse, status_code=status.HTTP_201_CREATED)
