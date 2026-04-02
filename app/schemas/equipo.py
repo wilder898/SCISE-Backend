@@ -40,3 +40,29 @@ class EquipoAsociadoResponse(BaseModel):
     tipo: Optional[str] = None
     descripcion: Optional[str] = None
     estado: str
+
+
+class PaginationMeta(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    has_next: bool
+
+
+class EquipoSistemaListItem(BaseModel):
+    id: int
+    codigo_barras_equipo: Optional[str] = None
+    serial: str
+    nombre: str
+    descripcion: Optional[str] = None
+    tipo_equipo: Optional[str] = None
+    estado: str
+    fecha_registro: datetime
+    estudiante_id: int
+    estudiante_nombre: Optional[str] = None
+    estudiante_documento: Optional[str] = None
+
+
+class PaginatedEquipoSistemaResponse(BaseModel):
+    data: list[EquipoSistemaListItem]
+    meta: PaginationMeta
