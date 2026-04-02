@@ -23,5 +23,5 @@ def test_login_wrong_password():
 
 def test_protected_route_without_token():
     """Test acceso sin token a ruta protegida"""
-    response = client.get("/api/v1/movimientos/historial")
+    response = client.get("/api/v1/movimientos")
     assert response.status_code == 401

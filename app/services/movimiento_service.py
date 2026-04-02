@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from datetime import datetime
+from datetime import date, datetime
 from sqlalchemy.orm import Session
 from app.models.movimientos import Movimiento
 from app.models.usuarios import Usuario
@@ -12,7 +12,11 @@ from app.repositories.equipo_repository import (
     get_equipo_by_id_with_lock,
     list_equipos_ingresados_by_estudiante,
 )
-from app.repositories.movimiento_repository import get_latest_movimiento_by_equipo_and_tipo
+from app.repositories.movimiento_repository import (
+    get_movimiento_by_id,
+    get_latest_movimiento_by_equipo_and_tipo,
+    list_movimientos_filtrados,
+)
 from app.repositories.auditoria_repository import create_auditoria
 from app.core.logger import get_logger
 
@@ -327,4 +331,82 @@ def registrar_salidas_batch(
         "total_registrados": len(movimientos_respuesta),
         "movimientos": movimientos_respuesta,
         "detail": "Salidas registradas correctamente",
+    }
+
+
+def listar_movimientos(
+    db: Session,
+    tipo: str | None = None,
+    fecha: date | None = None,
+    estudiante_id: int | None = None,
+    serial: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+) -> dict:
+    tipo_normalizado = (tipo or "").strip().upper()
+    if tipo_normalizado and tipo_normalizado not in {"INGRESO", "SALIDA"}:
+        raise HTTPException(400, "tipo debe ser INGRESO o SALIDA")
+
+    serial_normalizado = serial.strip() if serial else None
+    movimientos, total = list_movimientos_filtrados(
+        db=db,
+        tipo=tipo_normalizado or None,
+        fecha=fecha,
+        estudiante_id=estudiante_id,
+        serial=serial_normalizado,
+        skip=skip,
+        limit=limit,
+    )
+
+    data = [
+        {
+            "id": movimiento.id,
+            "tipo_movimiento": movimiento.tipo_movimiento,
+            "fecha_registro": movimiento.fecha_registro,
+            "usuario_id": movimiento.usuario_id,
+            "equipo_id": movimiento.equipo_id,
+            "estudiante_id": movimiento.estudiante_id,
+            "serial": movimiento.equipo.serial if movimiento.equipo else None,
+        }
+        for movimiento in movimientos
+    ]
+
+    total_pages = max(1, (total + limit - 1) // limit)
+    page = (skip // limit) + 1
+
+    return {
+        "data": data,
+        "meta": {
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+            "has_next": (skip + len(data)) < total,
+        },
+        "total": total,
+        "page": page,
+        "total_pages": total_pages,
+    }
+
+
+def obtener_movimiento_por_id(
+    db: Session,
+    movimiento_id: int,
+) -> dict:
+    movimiento = get_movimiento_by_id(db=db, movimiento_id=movimiento_id)
+    if not movimiento:
+        raise HTTPException(404, "Movimiento no encontrado")
+
+    return {
+        "id": movimiento.id,
+        "tipo_movimiento": movimiento.tipo_movimiento,
+        "fecha_registro": movimiento.fecha_registro,
+        "usuario_id": movimiento.usuario_id,
+        "equipo_id": movimiento.equipo_id,
+        "estudiante_id": movimiento.estudiante_id,
+        "serial": movimiento.equipo.serial if movimiento.equipo else None,
+        "equipo_nombre": movimiento.equipo.nombre if movimiento.equipo else None,
+        "estudiante_nombre": movimiento.estudiante.nombre if movimiento.estudiante else None,
+        "estudiante_documento": (
+            movimiento.estudiante.documento if movimiento.estudiante else None
+        ),
     }
