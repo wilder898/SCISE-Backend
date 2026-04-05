@@ -28,7 +28,7 @@ def listar_movimientos(
     estudiante_id: int | None = Query(default=None, gt=0),
     serial: str | None = Query(default=None, max_length=150),
     skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=20, ge=1, le=500),
+    limit: int = Query(default=5, ge=1, le=500),
     db: Session = Depends(get_db),
     _usuario_actual: Usuario = Depends(get_current_user),
 ):

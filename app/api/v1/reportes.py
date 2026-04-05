@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from app.controllers import reportes_controller
-from app.core.deps import require_role
+from app.core.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.models.usuarios import Usuario
 from app.schemas.reportes import (
@@ -12,11 +12,11 @@ from app.schemas.reportes import (
     ReportesResumenResponse,
 )
 
-router = APIRouter(prefix="/api/v1/reportes/movimientos", tags=["Reportes"])
+router = APIRouter(prefix="/api/v1", tags=["Reportes"])
 
 
 @router.get(
-    "/resumen",
+    "/reportes/movimientos/resumen",
     response_model=ReportesResumenResponse,
     summary="Resumen general de movimientos de equipos",
 )
@@ -44,7 +44,7 @@ def obtener_resumen_movimientos(
 
 
 @router.get(
-    "/historial",
+    "/reportes/movimientos/historial",
     response_model=PaginatedReporteMovimientosResponse,
     summary="Historial de movimientos con paginacion y filtros",
 )
@@ -80,7 +80,7 @@ def listar_historial_movimientos(
 
 
 @router.get(
-    "/export.csv",
+    "/reportes/movimientos/export.csv",
     summary="Exportar historial de movimientos en CSV",
 )
 def exportar_historial_movimientos_csv(
@@ -112,7 +112,7 @@ def exportar_historial_movimientos_csv(
 
 
 @router.get(
-    "/export.pdf",
+    "/reportes/movimientos/export.pdf",
     summary="Exportar historial de movimientos en PDF",
 )
 def exportar_historial_movimientos_pdf(
@@ -144,7 +144,7 @@ def exportar_historial_movimientos_pdf(
 
 
 @router.get(
-    "/export.xlsx",
+    "/reportes/movimientos/export.xlsx",
     summary="Exportar historial de movimientos en Excel (.xlsx)",
 )
 def exportar_historial_movimientos_xlsx(
@@ -172,4 +172,66 @@ def exportar_historial_movimientos_xlsx(
         content=xlsx_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get(
+    "/dashboard/resumen",
+    response_model=ReportesResumenResponse,
+    summary="Resumen de dashboard para usuarios autenticados",
+    tags=["Dashboard"],
+)
+def obtener_resumen_dashboard(
+    tipo: Optional[str] = Query(default=None),
+    tipo_movimiento: Optional[str] = Query(default=None),
+    fecha: Optional[date] = Query(default=None),
+    fecha_desde: Optional[date] = Query(default=None),
+    fecha_hasta: Optional[date] = Query(default=None),
+    fecha_inicio: Optional[date] = Query(default=None),
+    fecha_fin: Optional[date] = Query(default=None),
+    db: Session = Depends(get_db),
+    _usuario_actual: Usuario = Depends(get_current_user),
+):
+    return reportes_controller.obtener_resumen_dashboard(
+        db=db,
+        tipo=tipo,
+        tipo_movimiento=tipo_movimiento,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+    )
+
+
+@router.get(
+    "/dashboard/historial-reciente",
+    response_model=PaginatedReporteMovimientosResponse,
+    summary="Historial reciente paginado del dashboard",
+    tags=["Dashboard"],
+)
+def listar_historial_reciente_dashboard(
+    tipo: Optional[str] = Query(default=None),
+    tipo_movimiento: Optional[str] = Query(default=None),
+    fecha: Optional[date] = Query(default=None),
+    fecha_desde: Optional[date] = Query(default=None),
+    fecha_hasta: Optional[date] = Query(default=None),
+    fecha_inicio: Optional[date] = Query(default=None),
+    fecha_fin: Optional[date] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=5, ge=1, le=5),
+    db: Session = Depends(get_db),
+    _usuario_actual: Usuario = Depends(get_current_user),
+):
+    return reportes_controller.listar_historial_reciente_dashboard(
+        db=db,
+        tipo=tipo,
+        tipo_movimiento=tipo_movimiento,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        page=page,
+        limit=limit,
     )

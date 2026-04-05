@@ -123,7 +123,7 @@ def listar_historial_movimientos(
         fecha_fin=fecha_fin,
     )
 
-    effective_limit = limit if limit is not None else (page_size if page_size is not None else 20)
+    effective_limit = limit if limit is not None else (page_size if page_size is not None else 5)
     effective_limit = max(1, min(int(effective_limit), 500))
 
     if skip is None:
@@ -174,6 +174,56 @@ def listar_historial_movimientos(
         "page": effective_page,
         "total_pages": total_pages,
     }
+
+
+def obtener_resumen_dashboard(
+    db: Session,
+    tipo: Optional[str] = None,
+    tipo_movimiento: Optional[str] = None,
+    fecha: Optional[date] = None,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+) -> dict:
+    return obtener_resumen_movimientos(
+        db=db,
+        tipo=tipo,
+        tipo_movimiento=tipo_movimiento,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+    )
+
+
+def listar_historial_reciente_dashboard(
+    db: Session,
+    tipo: Optional[str] = None,
+    tipo_movimiento: Optional[str] = None,
+    fecha: Optional[date] = None,
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+    page: int = 1,
+    limit: int = 5,
+) -> dict:
+    safe_page = max(1, int(page or 1))
+    safe_limit = max(1, min(int(limit or 5), 5))
+    return listar_historial_movimientos(
+        db=db,
+        tipo=tipo,
+        tipo_movimiento=tipo_movimiento,
+        fecha=fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        page=safe_page,
+        page_size=safe_limit,
+    )
 
 
 def exportar_historial_movimientos_csv(
