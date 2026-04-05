@@ -8,6 +8,7 @@ from app.models.usuarios import Usuario
 from app.schemas.equipo import (
     EquipoCreate,
     EquipoResponse,
+    EquipoUpdate,
     PaginatedEquipoSistemaResponse,
 )
 
@@ -49,3 +50,31 @@ def crear_equipo(
     usuario_actual: Usuario = Depends(get_current_user),
 ):
     return equipo_controller.crear_equipo(db, datos, usuario_actual)
+
+
+@router.patch("/{equipo_id}", response_model=EquipoResponse)
+def actualizar_equipo(
+    equipo_id: int,
+    datos: EquipoUpdate,
+    db: Session = Depends(get_db),
+    usuario_actual: Usuario = Depends(get_current_user),
+):
+    return equipo_controller.actualizar_equipo(
+        db=db,
+        equipo_id=equipo_id,
+        datos=datos,
+        usuario_actual=usuario_actual,
+    )
+
+
+@router.delete("/{equipo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_equipo(
+    equipo_id: int,
+    db: Session = Depends(get_db),
+    usuario_actual: Usuario = Depends(get_current_user),
+):
+    equipo_controller.eliminar_equipo(
+        db=db,
+        equipo_id=equipo_id,
+        usuario_actual=usuario_actual,
+    )

@@ -60,7 +60,13 @@ def get_estudiante_activo_by_documento_o_codigo_barras(
 
 
 def list_estudiantes(db: Session, skip: int = 0, limit: int = 50) -> list[Estudiante]:
-    return db.query(Estudiante).offset(skip).limit(limit).all()
+    return (
+        db.query(Estudiante)
+        .order_by(Estudiante.fecha_registro.desc(), Estudiante.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def create_estudiante(db: Session, estudiante: Estudiante) -> Estudiante:

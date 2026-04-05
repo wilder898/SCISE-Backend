@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
+from datetime import datetime
 
 
 class EstudianteBase(BaseModel):
@@ -28,6 +29,7 @@ class EstudianteUpdate(BaseModel):
 class EstudianteResponse(EstudianteBase):
     id: int
     estado: str
+    fecha_registro: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
