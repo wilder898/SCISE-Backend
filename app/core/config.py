@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     app_port: int = 8000
     debug: bool = True
 
-    allowed_origins: str = "http://localhost:4321"
+    allowed_origins: str = "http://localhost:4321","http://127.0.0.1:4321"
 
     admin_nombre: str
     admin_correo: str

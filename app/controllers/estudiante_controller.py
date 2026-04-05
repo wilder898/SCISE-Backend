@@ -41,13 +41,14 @@ def actualizar_estudiante(
     estudiante_id: int,
     datos: EstudianteUpdate,
     db: Session,
-    _usuario_actual: Usuario,
+    usuario_actual: Usuario,
 ):
     """Coordina la actualización parcial de un estudiante operativo."""
     return estudiante_service.actualizar_estudiante_operativo(
         db=db,
         estudiante_id=estudiante_id,
         datos=datos,
+        usuario_actual=usuario_actual,
     )
 
 

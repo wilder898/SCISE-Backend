@@ -1,4 +1,5 @@
-from sqlalchemy import Column, BigInteger, String, ForeignKey
+from datetime import datetime
+from sqlalchemy import Column, BigInteger, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -14,6 +15,7 @@ class Estudiante(Base):
     ficha         = Column(String(100))
     celular       = Column(String(20))                      # ← NUEVO
     estado        = Column(String(20),  nullable=False, default="ACTIVO")
+    fecha_registro = Column(DateTime, nullable=False, default=datetime.utcnow)
     # Valores válidos: 'ACTIVO' | 'INACTIVO'
 
     # FK: la columna en BD se llama "usuario_crea", no "usuario_crea_id"

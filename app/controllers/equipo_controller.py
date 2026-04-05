@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.usuarios import Usuario
-from app.schemas.equipo import EquipoCreate
+from app.schemas.equipo import EquipoCreate, EquipoUpdate
 from app.services import equipo_service
 
 
@@ -25,3 +25,25 @@ def listar_equipos(
 
 def crear_equipo(db: Session, datos: EquipoCreate, usuario_actual: Usuario):
     return equipo_service.crear_equipo(db, datos, usuario_actual)
+
+
+def actualizar_equipo(
+    db: Session,
+    equipo_id: int,
+    datos: EquipoUpdate,
+    usuario_actual: Usuario,
+):
+    return equipo_service.actualizar_equipo(
+        db=db,
+        equipo_id=equipo_id,
+        datos=datos,
+        usuario_actual=usuario_actual,
+    )
+
+
+def eliminar_equipo(db: Session, equipo_id: int, usuario_actual: Usuario):
+    return equipo_service.eliminar_equipo(
+        db=db,
+        equipo_id=equipo_id,
+        usuario_actual=usuario_actual,
+    )

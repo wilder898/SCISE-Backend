@@ -26,6 +26,10 @@ def get_equipo_by_barcode(db: Session, codigo_barras: str) -> Optional[Equipo]:
     )
 
 
+def get_equipo_by_serial(db: Session, serial: str) -> Optional[Equipo]:
+    return db.query(Equipo).filter(Equipo.serial == serial).first()
+
+
 def get_equipo_by_barcode_with_lock(db: Session, codigo_barras: str) -> Optional[Equipo]:
     """Obtiene el equipo con bloqueo de fila para operaciones concurrentes."""
     return db.execute(
@@ -109,3 +113,8 @@ def update_equipo(db: Session, equipo: Equipo) -> Equipo:
     db.commit()
     db.refresh(equipo)
     return equipo
+
+
+def delete_equipo(db: Session, equipo: Equipo) -> None:
+    db.delete(equipo)
+    db.commit()
