@@ -16,7 +16,9 @@ class EquipoCreate(EquipoBase):
 
 
 class EquipoUpdate(BaseModel):
+    serial: Optional[str] = Field(None, max_length=150)
     nombre: Optional[str] = Field(None, max_length=150)
+    codigo_barras_equipo: Optional[str] = Field(None, max_length=100)
     descripcion: Optional[str] = None
     tipo_equipo: Optional[str] = Field(None, max_length=100)
     estado: Optional[str] = None

@@ -68,13 +68,13 @@ def actualizar_estudiante(
     estudiante_id: int,
     datos: EstudianteUpdate,
     db: Session = Depends(get_db),
-    usuario_actual: Usuario = Depends(require_role("Administrador")),
+    usuario_actual: Usuario = Depends(get_current_user),
 ):
     return estudiante_controller.actualizar_estudiante(
         estudiante_id=estudiante_id,
         datos=datos,
         db=db,
-        _usuario_actual=usuario_actual,
+        usuario_actual=usuario_actual,
     )
 
 

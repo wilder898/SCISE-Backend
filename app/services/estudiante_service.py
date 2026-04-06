@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.models.estudiantes import Estudiante
+from app.models.usuarios import Usuario
 from app.repositories.estudiante_repository import (
     create_estudiante,
     get_estudiante_activo_by_documento_o_codigo_barras,
@@ -35,6 +36,12 @@ def _normalizar_rol(rol: str) -> str:
             detail="El rol es obligatorio",
         )
     return rol_normalizado
+
+
+def _es_administrador(usuario: Usuario | None) -> bool:
+    if not usuario or not usuario.rol:
+        return False
+    return str(usuario.rol.nombre or "").strip().lower() == "administrador"
 
 
 def buscar_estudiante_activo_por_documento(db: Session, documento: str) -> Estudiante:
@@ -118,6 +125,7 @@ def actualizar_estudiante_operativo(
     db: Session,
     estudiante_id: int,
     datos: EstudianteUpdate,
+    usuario_actual: Usuario | None = None,
 ) -> Estudiante:
     estudiante = get_estudiante_by_id(db, estudiante_id)
     if not estudiante:
@@ -161,13 +169,15 @@ def actualizar_estudiante_operativo(
                 raise HTTPException(status_code=409, detail="Ya existe un estudiante con ese email")
         estudiante.email = email
 
-    if datos.rol is not None:
+    puede_editar_avanzado = _es_administrador(usuario_actual)
+
+    if datos.rol is not None and puede_editar_avanzado:
         estudiante.rol = _normalizar_rol(datos.rol)
 
     if datos.celular is not None:
         estudiante.celular = datos.celular.strip() if datos.celular else None
 
-    if datos.estado is not None:
+    if datos.estado is not None and puede_editar_avanzado:
         estudiante.estado = _normalizar_estado(datos.estado)
 
     return update_estudiante(db, estudiante)
@@ -195,11 +205,14 @@ def listar_equipos_asociados_por_estudiante(
     solo_disponibles_ingreso: bool = True,
 ) -> list[dict]:
     estudiante = get_estudiante_by_id(db, estudiante_id)
-    if not estudiante or estudiante.estado != "ACTIVO":
+    if not estudiante:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Estudiante no encontrado o inactivo",
+            detail="Estudiante no encontrado",
         )
+
+    if solo_disponibles_ingreso and estudiante.estado != "ACTIVO":
+        return []
 
     equipos = list_equipos_by_estudiante(
         db,
