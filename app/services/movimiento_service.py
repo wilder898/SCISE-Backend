@@ -234,6 +234,7 @@ def listar_equipos_activos_por_estudiante(db: Session, estudiante_id: int) -> li
         respuesta.append(
             {
                 "id": equipo.id,
+                "nombre": equipo.nombre,
                 "serial": equipo.serial,
                 "tipo": equipo.tipo_equipo,
                 "descripcion": equipo.descripcion,

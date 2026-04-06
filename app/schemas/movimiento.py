@@ -42,6 +42,7 @@ class MovimientoIngresoBatchResponse(BaseModel):
 
 class EquipoActivoResponse(BaseModel):
     id: int
+    nombre: str
     serial: str
     tipo: Optional[str] = None
     descripcion: Optional[str] = None
