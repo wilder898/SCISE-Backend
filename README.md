@@ -1,6 +1,6 @@
 # SCISE-Backend
 
-API de SCISE construida con FastAPI + SQLAlchemy + Alembic para autenticacion, gestion de estudiantes/equipos, movimientos de ingreso/salida, reportes, usuarios de sistema y auditoria.
+API de SCISE construida con FastAPI + SQLAlchemy + Alembic para autenticación, gestión de estudiantes/equipos, movimientos de ingreso/salida, reportes, usuarios del sistema y auditoría.
 
 ## Estado actual
 
@@ -8,28 +8,29 @@ API de SCISE construida con FastAPI + SQLAlchemy + Alembic para autenticacion, g
   - `POST /api/v1/auth/login` con JSON `{ correo, contrasena }`
   - `POST /api/v1/auth/logout` con JWT
   - `POST /api/v1/auth/token` para Swagger OAuth2
-- Endpoints de `ingreso`, `salida`, `usuarios`, `equipos`, `reportes`, `dashboard`, `configuracion` y `auditoria` activos en `api/v1`.
-- CORS habilitado via `ALLOWED_ORIGINS`.
+- Endpoints de `ingreso`, `salida`, `usuarios`, `equipos`, `reportes`, `dashboard`, `configuración` y `auditoría` activos en `api/v1`.
+- CORS habilitado vía `ALLOWED_ORIGINS`.
 - Logging middleware activo en cada request.
-- Migraciones Alembic incluidas para sincronizacion de esquema (incluye `fecha_registro` en estudiantes).
+- Migraciones Alembic incluidas para sincronización de esquema.  
+  Incluye `fecha_registro` en estudiantes.
 
 ## Arquitectura por capas
 
 ```text
 app/
   api/v1/          # Rutas HTTP (FastAPI routers)
-  controllers/     # Orquestacion de casos de uso por modulo
+  controllers/     # Orquestación de casos de uso por módulo
   services/        # Reglas de negocio
   repositories/    # Acceso a datos (SQLAlchemy)
   models/          # Modelos ORM
   schemas/         # Contratos request/response (Pydantic)
-  core/            # Config, seguridad, dependencias, logger
+  core/            # Configuración, seguridad, dependencias, logger
   db/              # Session, base, registro de modelos, seed
   middlewares/     # Middleware HTTP
   utils/           # Utilidades (JWT, password)
 ```
 
-## Tecnologias
+## Tecnologías
 
 - FastAPI
 - SQLAlchemy 2.x
@@ -43,11 +44,11 @@ app/
 
 ## Requisitos
 
-- Python 3.12 (recomendado)
+- Python 3.12 recomendado
 - PostgreSQL 14+
 - Entorno virtual (`.venv`)
 
-## Configuracion local
+## Configuración local
 
 1. Crear y activar entorno virtual:
 
@@ -66,15 +67,15 @@ pip install -r requirements.txt
 
 Variables principales:
 
-| Variable | Descripcion |
+| Variable | Descripción |
 | --- | --- |
-| `DATABASE_URL` | Conexion PostgreSQL |
+| `DATABASE_URL` | Conexión PostgreSQL |
 | `SECRET_KEY` | Clave JWT |
-| `ALGORITHM` | Algoritmo JWT (default `HS256`) |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Minutos de expiracion del token |
+| `ALGORITHM` | Algoritmo JWT, por defecto `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Minutos de expiración del token |
 | `APP_HOST` / `APP_PORT` | Host/puerto del servidor |
 | `DEBUG` | Modo debug |
-| `ALLOWED_ORIGINS` | Origenes CORS, separados por coma |
+| `ALLOWED_ORIGINS` | Orígenes CORS separados por coma |
 | `ADMIN_NOMBRE` / `ADMIN_CORREO` / `ADMIN_DOCUMENTO` / `ADMIN_PASSWORD` | Datos del admin inicial |
 | `ENVIRONMENT` | `development`, `testing`, `production` |
 
@@ -84,13 +85,13 @@ Variables principales:
 alembic upgrade head
 ```
 
-5. (Opcional, recomendado primera vez) Seed de roles + admin:
+5. Opcional, recomendado la primera vez: seed de roles + admin:
 
 ```powershell
 python -m app.db.seed
 ```
 
-## Ejecucion
+## Ejecución
 
 Levantar API en desarrollo:
 
@@ -98,7 +99,7 @@ Levantar API en desarrollo:
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Documentacion interactiva:
+Documentación interactiva:
 
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
@@ -116,7 +117,7 @@ Documentacion interactiva:
 
 - `GET /api/v1/estudiantes`
 - `GET /api/v1/estudiantes/by-documento/{documento}`  
-  Nota: internamente busca por documento o codigo de barras.
+  Nota: internamente busca por documento o código de barras.
 - `GET /api/v1/estudiantes/{estudiante_id}/equipos`
 - `POST /api/v1/estudiantes` (Administrador)
 - `PATCH /api/v1/estudiantes/{estudiante_id}`
@@ -137,7 +138,7 @@ Documentacion interactiva:
 - `POST /api/v1/movimientos/salidas`
 - `GET /api/v1/movimientos/{movimiento_id}`
 
-### Reportes / Dashboard
+### Reportes y Dashboard
 
 - `GET /api/v1/reportes/movimientos/resumen` (Administrador)
 - `GET /api/v1/reportes/movimientos/historial` (Administrador)
@@ -147,7 +148,7 @@ Documentacion interactiva:
 - `GET /api/v1/dashboard/resumen`
 - `GET /api/v1/dashboard/historial-reciente`
 
-### Usuarios sistema (Configuracion)
+### Usuarios del sistema (Configuración)
 
 - `GET /api/v1/usuarios` (Administrador)
 - `POST /api/v1/usuarios` (Administrador)
@@ -156,11 +157,11 @@ Documentacion interactiva:
 - `PATCH /api/v1/usuarios/{usuario_id}/password` (Administrador)
 - `DELETE /api/v1/usuarios/{usuario_id}` (Administrador)
 
-### Auditoria
+### Auditoría
 
 - `GET /api/v1/auditoria` (Administrador)
 
-## Contratos minimos que usa el frontend
+## Contratos mínimos que usa el frontend
 
 ### Login frontend
 
@@ -219,11 +220,11 @@ Ejecutar tests:
 python -m pytest -q
 ```
 
-En el estado actual del entorno local, la suite pasa casi completa pero hay 1 prueba fallando (`tests/test_auth.py::test_login_success`) por credenciales/estado del admin en DB.
+En el estado actual del entorno local, la suite pasa casi completa, pero puede aparecer 1 prueba fallando (`tests/test_auth.py::test_login_success`) por credenciales o estado del admin en la base de datos.
 
 ## Notas operativas
 
-- Si aparece error SQL por columnas nuevas (por ejemplo `fecha_registro` en `estudiantes`), ejecutar:
+- Si aparece error SQL por columnas nuevas, por ejemplo `fecha_registro` en `estudiantes`, ejecutar:
   - `alembic upgrade head`
 - `ALLOWED_ORIGINS` debe estar en formato string separado por comas para que `main.py` lo procese con `split(",")`.
 - Swagger `Authorize` usa OAuth2 Password con `tokenUrl=/api/v1/auth/token`.
