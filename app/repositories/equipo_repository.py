@@ -1,7 +1,8 @@
 from typing import Optional
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session, joinedload
 from app.models.equipos import Equipo
+from app.models.estudiantes import Estudiante
 
 
 def get_equipo_by_id(db: Session, equipo_id: int) -> Optional[Equipo]:
@@ -25,6 +26,10 @@ def get_equipo_by_barcode(db: Session, codigo_barras: str) -> Optional[Equipo]:
     )
 
 
+def get_equipo_by_serial(db: Session, serial: str) -> Optional[Equipo]:
+    return db.query(Equipo).filter(Equipo.serial == serial).first()
+
+
 def get_equipo_by_barcode_with_lock(db: Session, codigo_barras: str) -> Optional[Equipo]:
     """Obtiene el equipo con bloqueo de fila para operaciones concurrentes."""
     return db.execute(
@@ -36,6 +41,41 @@ def get_equipo_by_barcode_with_lock(db: Session, codigo_barras: str) -> Optional
 
 def list_equipos(db: Session, skip: int = 0, limit: int = 50) -> list[Equipo]:
     return db.query(Equipo).offset(skip).limit(limit).all()
+
+
+def list_equipos_filtrados(
+    db: Session,
+    q: Optional[str] = None,
+    tipo: Optional[str] = None,
+    estado: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> tuple[list[Equipo], int]:
+    query = db.query(Equipo).options(joinedload(Equipo.estudiante))
+
+    if q:
+        patron = f"%{q}%"
+        query = query.join(Estudiante, Equipo.estudiante_id == Estudiante.id).filter(
+            or_(
+                Equipo.serial.ilike(patron),
+                Equipo.nombre.ilike(patron),
+                Equipo.descripcion.ilike(patron),
+                Equipo.tipo_equipo.ilike(patron),
+                Equipo.codigo_barras_equipo.ilike(patron),
+                Estudiante.nombre.ilike(patron),
+                Estudiante.documento.ilike(patron),
+            )
+        )
+
+    if tipo:
+        query = query.filter(func.lower(Equipo.tipo_equipo) == tipo.lower())
+
+    if estado:
+        query = query.filter(func.lower(Equipo.estado) == estado.lower())
+
+    total = query.count()
+    equipos = query.order_by(Equipo.fecha_registro.desc()).offset(skip).limit(limit).all()
+    return equipos, total
 
 
 def list_equipos_by_estudiante(
@@ -73,3 +113,8 @@ def update_equipo(db: Session, equipo: Equipo) -> Equipo:
     db.commit()
     db.refresh(equipo)
     return equipo
+
+
+def delete_equipo(db: Session, equipo: Equipo) -> None:
+    db.delete(equipo)
+    db.commit()

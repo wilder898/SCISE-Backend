@@ -1,18 +1,46 @@
-from fastapi import APIRouter, Depends, status
+from datetime import date
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.usuarios import Usuario
 from app.schemas.movimiento import (
     EquipoActivoResponse,
+    MovimientoDetalleResponse,
     MovimientoIngresoBatchRequest,
     MovimientoIngresoBatchResponse,
+    PaginatedMovimientoResponse,
     MovimientoSalidaBatchRequest,
     MovimientoSalidaBatchResponse,
 )
 from app.controllers import movimiento_controller
 
 router = APIRouter(prefix="/api/v1/movimientos", tags=["Movimientos"])
+
+
+@router.get(
+    "",
+    response_model=PaginatedMovimientoResponse,
+)
+def listar_movimientos(
+    tipo: str | None = Query(default=None),
+    fecha: date | None = Query(default=None),
+    estudiante_id: int | None = Query(default=None, gt=0),
+    serial: str | None = Query(default=None, max_length=150),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=5, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _usuario_actual: Usuario = Depends(get_current_user),
+):
+    return movimiento_controller.listar_movimientos(
+        db=db,
+        tipo=tipo,
+        fecha=fecha,
+        estudiante_id=estudiante_id,
+        serial=serial,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.post(
@@ -64,4 +92,19 @@ def registrar_salidas_batch(
         estudiante_id=datos.estudiante_id,
         equipos_ids=datos.equipos,
         usuario=usuario_actual,
+    )
+
+
+@router.get(
+    "/{movimiento_id}",
+    response_model=MovimientoDetalleResponse,
+)
+def obtener_movimiento_por_id(
+    movimiento_id: int,
+    db: Session = Depends(get_db),
+    _usuario_actual: Usuario = Depends(get_current_user),
+):
+    return movimiento_controller.obtener_movimiento_por_id(
+        db=db,
+        movimiento_id=movimiento_id,
     )

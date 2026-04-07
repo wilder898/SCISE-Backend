@@ -42,6 +42,7 @@ class MovimientoIngresoBatchResponse(BaseModel):
 
 class EquipoActivoResponse(BaseModel):
     id: int
+    nombre: str
     serial: str
     tipo: Optional[str] = None
     descripcion: Optional[str] = None
@@ -68,3 +69,41 @@ class MovimientoSalidaBatchResponse(BaseModel):
     total_registrados: int
     movimientos: list[MovimientoSalidaItemResponse]
     detail: str
+
+
+class MovimientosPaginationMeta(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    has_next: bool
+
+
+class MovimientoListItemResponse(BaseModel):
+    id: int
+    tipo_movimiento: str
+    fecha_registro: datetime
+    usuario_id: int
+    equipo_id: int
+    estudiante_id: int
+    serial: Optional[str] = None
+
+
+class PaginatedMovimientoResponse(BaseModel):
+    data: list[MovimientoListItemResponse]
+    meta: MovimientosPaginationMeta
+    total: int
+    page: int
+    total_pages: int
+
+
+class MovimientoDetalleResponse(BaseModel):
+    id: int
+    tipo_movimiento: str
+    fecha_registro: datetime
+    usuario_id: int
+    equipo_id: int
+    estudiante_id: int
+    serial: Optional[str] = None
+    equipo_nombre: Optional[str] = None
+    estudiante_nombre: Optional[str] = None
+    estudiante_documento: Optional[str] = None

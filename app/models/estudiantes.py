@@ -1,4 +1,5 @@
-from sqlalchemy import Column, BigInteger, String, ForeignKey
+from datetime import datetime
+from sqlalchemy import Column, BigInteger, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -9,9 +10,12 @@ class Estudiante(Base):
     codigo_barras = Column(String(100), unique=True)        # nullable, asignado luego
     documento     = Column(String(50),  unique=True, nullable=False)   # ← NUEVO
     nombre        = Column(String(150), nullable=False)
+    email         = Column(String(150), unique=True)
+    rol           = Column(String(50), nullable=False, default="Aprendiz")
     ficha         = Column(String(100))
     celular       = Column(String(20))                      # ← NUEVO
     estado        = Column(String(20),  nullable=False, default="ACTIVO")
+    fecha_registro = Column(DateTime, nullable=False, default=datetime.utcnow)
     # Valores válidos: 'ACTIVO' | 'INACTIVO'
 
     # FK: la columna en BD se llama "usuario_crea", no "usuario_crea_id"
