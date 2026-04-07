@@ -2,7 +2,7 @@
 
 API de SCISE construida con FastAPI + SQLAlchemy + Alembic para autenticación, gestión de estudiantes/equipos, movimientos de ingreso/salida, reportes, usuarios del sistema y auditoría.
 
-## Estado actual
+## Módulos
 
 - Auth operativa para frontend:
   - `POST /api/v1/auth/login` con JSON `{ correo, contrasena }`
@@ -62,8 +62,6 @@ python -m venv .venv
 ```powershell
 pip install -r requirements.txt
 ```
-
-3. Crear `.env` a partir de `.env.example` y completar valores reales.
 
 Variables principales:
 
@@ -170,7 +168,7 @@ Documentación interactiva:
 ```json
 {
   "correo": "admin@scise.sena.edu.co",
-  "contrasena": "tu_password"
+  "contrasena": "Admin123*"
 }
 ```
 
