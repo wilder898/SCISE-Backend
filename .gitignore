@@ -1,7 +1,8 @@
 # CREDENCIALES Y CONFIGURACIÓN SENSIBLE
 .env
+.env.*
+!.env.example
 
-# ENTORNO VIRTUAL DE PYTHON
 venv/
 .venv/
 env/
