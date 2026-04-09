@@ -58,7 +58,7 @@ def listar_equipos_asociados(
 def crear_estudiante(
     datos: EstudianteCreate,
     db: Session = Depends(get_db),
-    usuario_actual: Usuario = Depends(require_role("Administrador")),
+    usuario_actual: Usuario = Depends(get_current_user),
 ):
     return estudiante_controller.crear_estudiante(datos, db, usuario_actual)
 
