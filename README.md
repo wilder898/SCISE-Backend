@@ -174,7 +174,7 @@ Documentacion interactiva:
 ```json
 {
   "correo": "admin@scise.sena.edu.co",
-  "contrasena": "CambiarEstoInmediatamente123!"
+  "contrasena": "Admin123*"
 }
 ```
 
